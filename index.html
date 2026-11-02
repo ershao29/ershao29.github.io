@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width">
+        <title>Colin's Personal Website</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding: 40px;
+                background-color: #f9f9f9;
+                color: #333;
+            }
+            .profile-container {
+                display: flex;
+                align-items: center; /* 垂直居中对齐 */
+                gap: 40px;          /* 左右两栏的间距 */
+                max-width: 800px;
+                margin: 0 auto;     /* 页面水平居中 */
+                background: #ffffff;
+                padding: 30px;
+                border-radius: 12px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            }
+            /* 左侧图片样式 */
+            .profile-avatar img {
+                width: 200px;
+                height: 200px;
+                object-fit: cover;  /* 保证图片按比例裁剪缩放 */
+                border-radius: 50%; /* 圆形头像，如不需要圆角可去掉该行 */
+            }
+
+            /* 右侧内容样式 */
+            .profile-content {
+                flex: 1; /* 自动填充剩余宽度 */
+            }
+
+            .profile-content h1 {
+                margin-top: 0;
+                margin-bottom: 10px;
+                font-size: 1.8rem;
+            }
+
+            .profile-content p {
+                line-height: 1.6;
+                color: #666;
+            }
+
+            /* 导航栏样式 */
+            .nav-links {
+                list-style: none;
+                padding: 0;
+                margin-top: 20px;
+                display: flex;
+                gap: 15px; /* 导航项水平间隔 */
+            }
+
+            .nav-links a {
+                text-decoration: none;
+                color: #0066cc;
+                font-weight: bold;
+                padding: 6px 12px;
+                border: 1px solid #0066cc;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+            }
+
+            .nav-links a:hover {
+                background-color: #0066cc;
+                color: #ffffff;
+            }
+
+            /* 移动端自适应：屏幕较小时变为上下单栏 */
+            @media (max-width: 600px) {
+                .profile-container {
+                    flex-direction: column;
+                    text-align: center;
+                }
+
+                .nav-links {
+                    justify-content: center;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="profile-container">
+            <div class="profile-avatar">
+                <img src="./images/person.jpg" alt="Colin">
+            </div>
+
+            <div class="profile-content">
+                <h1>Shao-bin JI</h1>
+                <p>Welcome to my personal homepage!</p>
+                <p class="bio">
+                    I am a Ph.D. candidate in Nuclear Energy Science and Engineering at Sun Yat-sen University,
+                    with research interests in computer graphics and high-performance computing &mdash;
+                    a combination that bridges rendering and reactor physics.
+                </p>
+                <ul class="nav-links">
+                    <li><a href="./navigations/projects.html">Projects</a></li>
+                    <li><a href="./navigations/publications.html">Publications</a></li>
+                    <li><a href="./navigations/cv.html">CV</a></li>
+                </ul>
+            </div>
+        </div>
+    </body>
+</html>
