@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="在 amd128 上部署 Hunyuan3D-2，从独立环境到几何生成、纹理 GLB 和 Gradio 界面。">
+    <title>Hunyuan3D-2 部署指南 | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../styles/hunyuan3d.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../index.html">Home</a> / <a href="../projects.html">Projects</a> / Hunyuan3D</nav>
+      <header>
+        <h1>Hunyuan3D-2 部署指南</h1>
+        <p class="lead">在 amd128 上完成图片到几何模型，再生成带纹理的三维资产。</p>
+        <p>工作目录为 <code>/home/ps/jishaobin/research-field-NTE</code>。使用独立 Conda 环境，先导出 <code>shape.glb</code>，再导出 <code>textured.glb</code>。</p>
+        <p class="note">本文整理自部署操作方案。硬件信息来自 2026-11-12 的检查，依赖版本为建议基线，完整推理尚待实际运行验证。更新于 2026-11-23。</p>
+      </header>
+      <nav class="contents" aria-label="部署目录">
+        <a href="#environment">环境准备</a>
+        <a href="#dependencies">安装依赖</a>
+        <a href="#shape">几何推理</a>
+        <a href="#extensions">编译纹理模块</a>
+        <a href="#texture">纹理推理</a>
+        <a href="#results">查看与记录结果</a>
+        <a href="#gradio">浏览器界面</a>
+        <a href="#troubleshooting">常见问题</a>
+        <a href="#sources">官方资料</a>
+      </nav>
+
+      <section aria-labelledby="hardware">
+        <h2 id="hardware">服务器与版本选择</h2>
+        <div class="table-scroll">
+          <table>
+            <caption>amd128 环境记录与本指南配置</caption>
+            <thead><tr><th scope="col">项目</th><th scope="col">配置</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">GPU</th><td>2 × RTX 3090，每张 24GB；默认使用物理 GPU 1</td></tr>
+              <tr><th scope="row">驱动</th><td>560.35.05</td></tr>
+              <tr><th scope="row">系统 CUDA Toolkit</th><td><code>/usr/local/cuda-12.0</code></td></tr>
+              <tr><th scope="row">内存 / 磁盘</th><td>约 503GiB 内存；检查时目标分区约 5.2TB 可用</td></tr>
+              <tr><th scope="row">Python / PyTorch</th><td>Python 3.10、PyTorch 2.5.1、torchvision 0.20.1、cu124</td></tr>
+              <tr><th scope="row">扩展编译工具</th><td>在独立环境中安装 CUDA Toolkit 12.4.1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>工作目录中已有 Miniforge。下文单卡串行运行两个阶段，纹理阶段启用 CPU offload。</p>
+      </section>
+
+      <section aria-labelledby="environment">
+        <h2 id="environment">连接服务器并创建环境</h2>
+        <p>先在本地终端登录，再逐段执行服务器命令。已有环境可直接使用下方激活脚本。每段成功后再继续下一段。</p>
+        <pre><code>ssh amd128
+
+export HY3D_ROOT=/home/ps/jishaobin/research-field-NTE
+cd "$HY3D_ROOT"
+source "$HY3D_ROOT/miniforge3/etc/profile.d/conda.sh"
+export CONDA_PKGS_DIRS="$HY3D_ROOT/.cache/conda-pkgs"
+
+conda create -y \
+  --prefix "$HY3D_ROOT/envs/hunyuan3d2" \
+  --override-channels -c conda-forge \
+  python=3.10 pip</code></pre>
+        <p>创建专用激活脚本，集中设置缓存、临时目录和所用 GPU。</p>
+        <pre><code>cat &gt; "$HY3D_ROOT/activate-hunyuan3d2.sh" &lt;&lt;'BASH'
+export HY3D_ROOT=/home/ps/jishaobin/research-field-NTE
+source "$HY3D_ROOT/miniforge3/etc/profile.d/conda.sh"
+conda activate "$HY3D_ROOT/envs/hunyuan3d2"
+
+export CONDA_PKGS_DIRS="$HY3D_ROOT/.cache/conda-pkgs"
+export HF_HOME="$HY3D_ROOT/.cache/hunyuan3d2/huggingface"
+export TORCH_HOME="$HY3D_ROOT/.cache/hunyuan3d2/torch"
+export U2NET_HOME="$HY3D_ROOT/.cache/hunyuan3d2/rembg"
+export PIP_CACHE_DIR="$HY3D_ROOT/.cache/hunyuan3d2/pip"
+export TMPDIR="$HY3D_ROOT/.tmp/hunyuan3d2"
+
+# 物理 GPU 1 在当前进程中对应 cuda:0。
+export CUDA_VISIBLE_DEVICES=1
+export PYTHONNOUSERSITE=1
+export MAX_JOBS=8
+
+mkdir -p "$HF_HOME" "$TORCH_HOME" "$U2NET_HOME" \
+  "$PIP_CACHE_DIR" "$TMPDIR"
+
+if [ -x "$CONDA_PREFIX/bin/nvcc" ]; then
+  export CUDA_HOME="$CONDA_PREFIX"
+  export PATH="$CUDA_HOME/bin:$PATH"
+fi
+BASH
+
+source "$HY3D_ROOT/activate-hunyuan3d2.sh"
+nvidia-smi</code></pre>
+        <p>重新 SSH 登录后执行下面一行恢复环境。运行前查看显卡占用，按需调整脚本中的 <code>CUDA_VISIBLE_DEVICES</code>。</p>
+        <pre><code>source /home/ps/jishaobin/research-field-NTE/activate-hunyuan3d2.sh</code></pre>
+      </section>
+
+      <section aria-labelledby="dependencies">
+        <h2 id="dependencies">获取代码并安装依赖</h2>
+        <p>首次获取项目时执行克隆。已有仓库可直接进入目录。先安装指定的 GPU 版 PyTorch，再用版本约束安装项目依赖。</p>
+        <pre><code>cd "$HY3D_ROOT"
+git clone --depth 1 https://github.com/Tencent-Hunyuan/Hunyuan3D-2.git
+cd "$HY3D_ROOT/Hunyuan3D-2"
+mkdir -p outputs logs
+
+python -m pip install "pip==24.3.1" "setuptools==75.8.0" wheel
+python -m pip install \
+  torch==2.5.1 torchvision==0.20.1 \
+  --index-url https://download.pytorch.org/whl/cu124</code></pre>
+        <p>上游依赖大多未锁定版本。下面记录一组部署基线，并补装几何表面提取所需的 <code>scikit-image</code>。</p>
+        <pre><code>cat &gt; constraints-amd128.txt &lt;&lt;'EOF'
+torch==2.5.1
+torchvision==0.20.1
+numpy==1.26.4
+diffusers==0.32.2
+transformers==4.48.3
+huggingface-hub==0.30.2
+accelerate==1.6.0
+gradio==5.21.0
+pydantic==2.10.6
+rembg==2.0.65
+opencv-python&lt;4.12
+opencv-python-headless&lt;4.12
+EOF
+
+python -m pip install -r requirements.txt -c constraints-amd128.txt
+python -m pip install scikit-image -c constraints-amd128.txt
+python -m pip install -e . -c constraints-amd128.txt --no-build-isolation
+python -m pip check</code></pre>
+        <p>检查 PyTorch、CUDA 和几何管线导入，确认能够在 GPU 上计算。</p>
+        <pre><code>python - &lt;&lt;'PY'
+import torch
+from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
+
+print("PyTorch:", torch.__version__)
+print("CUDA runtime:", torch.version.cuda)
+print("CUDA available:", torch.cuda.is_available())
+assert torch.cuda.is_available()
+print("GPU:", torch.cuda.get_device_name(0))
+
+x = torch.randn(256, 256, device="cuda")
+print("GPU computation:", (x @ x).mean().item())
+print("Shape pipeline import OK")
+PY</code></pre>
+      </section>
+
+      <section aria-labelledby="shape">
+        <h2 id="shape">先生成几何模型</h2>
+        <p>首次调用会下载几何权重，去背景还可能触发额外模型下载。先使用官方示例图片，确认导出成功后再替换自己的图片。</p>
+        <pre><code>cd "$HY3D_ROOT/Hunyuan3D-2"
+
+cat &gt; infer_shape_local.py &lt;&lt;'PY'
+import argparse
+from pathlib import Path
+
+import torch
+from PIL import Image
+from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--image", default="assets/demo.png")
+args = parser.parse_args()
+
+out = Path("outputs")
+out.mkdir(exist_ok=True)
+image = Image.open(args.image).convert("RGBA")
+
+if image.getchannel("A").getextrema() == (255, 255):
+    from hy3dgen.rembg import BackgroundRemover
+    image = BackgroundRemover()(image.convert("RGB"))
+
+image.save(out / "input.png")
+pipe = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+    "tencent/Hunyuan3D-2",
+    subfolder="hunyuan3d-dit-v2-0",
+    use_safetensors=True,
+    variant="fp16",
+    device="cuda",
+)
+mesh = pipe(
+    image=image,
+    num_inference_steps=30,
+    guidance_scale=5.0,
+    octree_resolution=256,
+    num_chunks=8000,
+    generator=torch.Generator(device="cuda").manual_seed(42),
+)[0]
+
+assert mesh is not None, "No mesh generated"
+assert len(mesh.vertices) &gt; 0 and len(mesh.faces) &gt; 0
+mesh.export(out / "shape.glb")
+print("Saved:", (out / "shape.glb").resolve())
+print("Vertices:", len(mesh.vertices), "Faces:", len(mesh.faces))
+PY
+
+set -o pipefail
+python -u infer_shape_local.py 2&gt;&amp;1 | tee logs/shape.log</code></pre>
+        <p>检查 <code>outputs/shape.glb</code> 是否生成，日志中应打印非零顶点数和面数。自己的图片尽量主体完整、背景简单。把下方路径替换为服务器上的实际图片，每次运行会覆盖同名输出。</p>
+        <pre><code>python -u infer_shape_local.py \
+  --image /你的图片绝对路径/input.png \
+  2&gt;&amp;1 | tee logs/shape.log</code></pre>
+      </section>
+
+      <section aria-labelledby="extensions">
+        <h2 id="extensions">编译纹理模块</h2>
+        <p>纹理阶段需要 CUDA 光栅化扩展和 C++ 网格处理扩展。给独立环境安装 CUDA Toolkit 12.4.1，使编译工具与 PyTorch cu124 对齐。</p>
+        <p><code>nvidia-smi</code> 中的 CUDA 版本表示驱动支持能力，编译器版本用 <code>nvcc --version</code> 查看。</p>
+        <pre><code>conda install -y \
+  --prefix "$HY3D_ROOT/envs/hunyuan3d2" \
+  --override-channels \
+  -c nvidia/label/cuda-12.4.1 \
+  -c conda-forge \
+  cuda-toolkit=12.4.1
+
+source "$HY3D_ROOT/activate-hunyuan3d2.sh"
+export CC=/usr/bin/gcc
+export CXX=/usr/bin/g++
+export TORCH_CUDA_ARCH_LIST="8.6"
+
+which nvcc
+nvcc --version</code></pre>
+        <p>确认 <code>nvcc</code> 位于 <code>envs/hunyuan3d2/bin</code> 且版本为 12.4 后，编译两项扩展。</p>
+        <pre><code>cd "$HY3D_ROOT/Hunyuan3D-2/hy3dgen/texgen/custom_rasterizer"
+python -m pip install . --no-build-isolation --no-deps
+
+cd "$HY3D_ROOT/Hunyuan3D-2/hy3dgen/texgen/differentiable_renderer"
+python -m pip install . --no-build-isolation --no-deps
+
+cd "$HY3D_ROOT/Hunyuan3D-2"
+python - &lt;&lt;'PY'
+import custom_rasterizer
+import custom_rasterizer_kernel
+import mesh_processor
+from hy3dgen.texgen import Hunyuan3DPaintPipeline
+
+print("Texture extensions import OK")
+PY</code></pre>
+      </section>
+
+      <section aria-labelledby="texture">
+        <h2 id="texture">生成带纹理的模型</h2>
+        <p>单独启动纹理推理进程，读取上一阶段的网格和去背景图片。先清理网格并减面，再加载 Paint Turbo、开启 CPU offload。首次运行会下载纹理与去光照权重。</p>
+        <pre><code>cd "$HY3D_ROOT/Hunyuan3D-2"
+
+cat &gt; infer_texture_local.py &lt;&lt;'PY'
+from pathlib import Path
+
+import trimesh
+from PIL import Image
+from hy3dgen.shapegen import (
+    FloaterRemover,
+    DegenerateFaceRemover,
+    FaceReducer,
+)
+from hy3dgen.texgen import Hunyuan3DPaintPipeline
+
+out = Path("outputs")
+image = Image.open(out / "input.png").convert("RGBA")
+mesh = trimesh.load(out / "shape.glb", force="mesh")
+mesh = FloaterRemover()(mesh)
+mesh = DegenerateFaceRemover()(mesh)
+mesh = FaceReducer()(mesh, max_facenum=40000)
+
+pipe = Hunyuan3DPaintPipeline.from_pretrained(
+    "tencent/Hunyuan3D-2",
+    subfolder="hunyuan3d-paint-v2-0-turbo",
+)
+pipe.enable_model_cpu_offload()
+mesh = pipe(mesh, image=image)
+mesh.export(out / "textured.glb")
+print("Saved:", (out / "textured.glb").resolve())
+PY
+
+set -o pipefail
+python -u infer_texture_local.py 2&gt;&amp;1 | tee logs/texture.log</code></pre>
+        <p>完成后应生成 <code>outputs/textured.glb</code>。两个阶段的日志分别保存在 <code>logs/shape.log</code> 和 <code>logs/texture.log</code>。</p>
+      </section>
+
+      <section aria-labelledby="results">
+        <h2 id="results">查看结果并记录环境</h2>
+        <p>在本地电脑的另一个终端下载模型，用 Blender 打开并确认几何、材质和贴图。展示时可以将输入图与生成网格截图并排放置。</p>
+        <pre><code># 在本地电脑执行
+scp amd128:/home/ps/jishaobin/research-field-NTE/Hunyuan3D-2/outputs/shape.glb .
+scp amd128:/home/ps/jishaobin/research-field-NTE/Hunyuan3D-2/outputs/textured.glb .</code></pre>
+        <p>推理验证通过后，在服务器记录代码提交和实际依赖版本，便于复现。</p>
+        <pre><code># 在服务器执行
+cd "$HY3D_ROOT/Hunyuan3D-2"
+git rev-parse HEAD &gt; outputs/code-commit.txt
+python -m pip freeze &gt; outputs/requirements-resolved.txt
+conda list --explicit &gt; outputs/conda-explicit.txt</code></pre>
+      </section>
+
+      <section aria-labelledby="gradio">
+        <h2 id="gradio">启动浏览器界面</h2>
+        <p>命令行推理通过后，可用 Gradio 上传图片、查看和导出模型。在服务器执行下面命令，并保持进程运行。</p>
+        <pre><code>source /home/ps/jishaobin/research-field-NTE/activate-hunyuan3d2.sh
+cd "$HY3D_ROOT/Hunyuan3D-2"
+
+set -o pipefail
+python -u gradio_app.py \
+  --model_path tencent/Hunyuan3D-2 \
+  --subfolder hunyuan3d-dit-v2-0 \
+  --texgen_model_path tencent/Hunyuan3D-2 \
+  --low_vram_mode \
+  --host 127.0.0.1 \
+  --port 8080 \
+  2&gt;&amp;1 | tee logs/gradio.log</code></pre>
+        <p>在本地另开终端建立 SSH 隧道，保持连接期间在本地浏览器访问 <code>http://127.0.0.1:18080</code>。</p>
+        <pre><code># 在本地电脑执行
+ssh -N -L 18080:127.0.0.1:8080 amd128</code></pre>
+        <p>检查启动日志和纹理生成功能。若出现 <code>Failed to load texture generator</code>，需先解决纹理模块加载问题。</p>
+      </section>
+
+      <section aria-labelledby="troubleshooting">
+        <h2 id="troubleshooting">常见问题</h2>
+        <p>从发生错误的步骤和对应日志开始定位。</p>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">现象</th><th scope="col">检查与处理</th></tr></thead>
+            <tbody>
+              <tr><td><code>torch.cuda.is_available()</code> 为 False</td><td>确认已激活 <code>envs/hunyuan3d2</code>，PyTorch 为 cu124 版本，且 <code>nvidia-smi</code> 能看到 GPU。</td></tr>
+              <tr><td>CUDA 编译版本不匹配</td><td>检查 <code>which nvcc</code>、<code>nvcc --version</code> 和 <code>CUDA_HOME</code>，应指向独立环境内的 12.4。</td></tr>
+              <tr><td>缺少光栅化或网格扩展</td><td>检查两个扩展的安装日志，再运行扩展导入检查。</td></tr>
+              <tr><td><code>CUDA out of memory</code></td><td>检查其他 GPU 任务。几何阶段可将 <code>octree_resolution</code> 降到 192、<code>num_chunks</code> 降到 4000；纹理阶段确认启用 CPU offload。</td></tr>
+              <tr><td>Hugging Face 下载超时</td><td>检查模型下载网络，再重试对应推理命令。项目页面可访问后，仍需确认权重下载成功。</td></tr>
+              <tr><td>依赖安装或导入冲突</td><td>执行 <code>python -m pip check</code>，核对约束文件与当前安装版本。</td></tr>
+              <tr><td>网页缺少纹理功能</td><td>查看 <code>logs/gradio.log</code> 中的加载错误，先验证扩展导入和纹理权重。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section aria-labelledby="sources">
+        <h2 id="sources">官方资料</h2>
+        <p>依赖和启动参数会随上游代码变化，可对照以下原始资料核查。</p>
+        <ul>
+          <li><a href="https://github.com/Tencent-Hunyuan/Hunyuan3D-2">Hunyuan3D-2 项目与安装说明</a></li>
+          <li><a href="https://github.com/Tencent-Hunyuan/Hunyuan3D-2/blob/main/setup.py">项目依赖声明</a></li>
+          <li><a href="https://github.com/Tencent-Hunyuan/Hunyuan3D-2/blob/main/gradio_app.py">Gradio 启动参数</a></li>
+          <li><a href="https://github.com/Tencent-Hunyuan/Hunyuan3D-2/blob/main/hy3dgen/texgen/pipelines.py">纹理管线与 CPU offload 接口</a></li>
+          <li><a href="https://huggingface.co/tencent/Hunyuan3D-2">Hugging Face 模型权重</a></li>
+          <li><a href="https://pytorch.org/get-started/previous-versions/#v251">PyTorch 2.5.1 安装组合</a></li>
+          <li><a href="https://docs.nvidia.com/cuda/archive/12.4.1/cuda-installation-guide-linux/index.html">CUDA Toolkit 12.4.1 安装说明</a></li>
+        </ul>
+      </section>
+      <footer><a href="../projects.html">返回 Projects</a> · <a href="#environment">回到环境准备</a></footer>
+    </main>
+  </body>
+</html>

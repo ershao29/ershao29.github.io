@@ -1,0 +1,88 @@
+@import url("implicit-geometry.css");
+
+main {
+  max-width: 88ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+h2, section {
+  scroll-margin-top: 1rem;
+}
+
+.contents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  padding: 1rem;
+  background: #f2f6fa;
+  border-left: 3px solid #21679d;
+}
+
+.note, caption {
+  color: #52616e;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid #dce3e9;
+  border-radius: 6px;
+  background: #f4f6f8;
+  line-height: 1.55;
+  overflow-wrap: normal;
+}
+
+pre code {
+  font-size: 0.9375rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  margin-bottom: 0.6rem;
+  text-align: left;
+}
+
+th, td {
+  padding: 0.65rem;
+  border-bottom: 1px solid #dce3e9;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead {
+  background: #f2f6fa;
+}
+
+footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #dce3e9;
+}
+
+a:focus-visible {
+  outline: 2px solid #065da9;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  main {
+    margin: 0;
+    padding: 1.1rem;
+    border-radius: 0;
+  }
+}
