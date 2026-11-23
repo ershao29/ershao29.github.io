@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>隐式建模与复杂堆芯中子输运：研究文档包 | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../styles/implicit-geometry.css">
+    <link rel="stylesheet" href="../../styles/research-proposal.css">
+  </head>
+  <body class="research-proposal">
+    <main>
+      <nav class="research-breadcrumb" aria-label="面包屑"><a href="../../index.html">Home</a> / <a href="../projects.html">Projects</a> / <span aria-current="page">研究方案</span></nav>
+      <header class="research-header">
+        <h1>隐式建模与复杂堆芯中子输运：研究文档包</h1>
+        <p>整理日期：2026 年 11 月 10 日。</p>
+        <p><strong>推荐主线：构建保留材料与源区语义的隐式几何程序，提供可验证的界面查询与完整特征线分段，再研究几何误差向输运响应的传递。</strong></p>
+      </header>
+      <nav class="research-nav" aria-label="研究方案文档">
+          <a href="research-directions/index.html">研究方向与论证</a>
+          <a href="technical-roadmap/index.html">技术路线与验证计划</a>
+          <a href="references/index.html">来源与证据边界</a>
+      </nav>
+      <article class="research-article">
+
+        <h2 id="section-1">阅读顺序</h2><ol type="1"><li><a href="research-directions/index.html">研究方向与论证</a>：两篇 Courter 文章、相关引用和 Matt Keeter 工作的归纳；概念纠正、数学反例、六个研究方向与创新边界。</li><li><a href="technical-roadmap/index.html">技术路线与验证计划</a>：OpenMC/OpenMOC 接入方案、软件契约、分级算例、误差/性能指标和 24 个月建议安排。</li><li><a href="references/index.html">来源与证据边界</a>：41 条来源记录、阅读范围、引用关系、访问限制与正式立项前的证据缺口。</li><li><a href="sources.json">机器可读来源索引</a>：便于后续维护和导入文献整理工具的 JSON。</li></ol><h2 id="section-2">最值得优先做的工作</h2><ul><li><strong>可靠几何内核</strong>：薄层、相切、共面和多材料条件下的最近有效事件及全穿越，不能用普通 sphere tracing 代替完整论证。</li><li><strong>三维 MOC 的几何误差控制</strong>：区分材料区与 FSR，联立检查段长、体积、轨迹覆盖及响应误差。</li><li><strong>保留材料语义的局部编译</strong>：借鉴 Fidget、区间裁剪和 Lipschitz Pruning，按 MC/MOC 不同工作负载评估端到端成本。</li></ul><p>OpenMC 保守预筛选适合做早期成果；可微输运、形变不确定性和 Random Ray 对照放在前向可靠性验证之后。</p><h2 id="section-3">交付范围</h2><p>本轮完成的是文献分析与研究方案；未安装或运行 Omega、Fidget、OpenMC、OpenMOC，未产生输运计算结果。文档中的性能、误差和工期目标均为研究建议。原文产品名为 Omega。</p>
+      </article>
+    </main>
+  </body>
+</html>

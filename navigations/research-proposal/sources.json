@@ -1,0 +1,330 @@
+[
+  {
+    "id": "S01",
+    "title": "Blake Courter. Geometry as Code. 2026-02-07",
+    "url": "https://www.blakecourter.com/2026/02/07/geometry-as-code.html",
+    "read_scope": "网页正文",
+    "relevance": "用户指定；Omega 的定位、技术关系与早期状态；是作者的研究愿景，不是输运验证。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S02",
+    "title": "Blake Courter. Unit Gradient Fields: SDFs, UGFs, and their friends. 2023-05-18",
+    "url": "https://www.blakecourter.com/2023/05/18/field-notation.html",
+    "read_scope": "网页正文",
+    "relevance": "用户指定；场的分类、边界映射与布尔操作。严谨数学条件需另行补足。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S03",
+    "title": "Blake Courter. What do we mean by offset? 2023-05-05",
+    "url": "https://www.blakecourter.com/2023/05/05/what-is-offset.html",
+    "read_scope": "网页正文相关章节",
+    "relevance": "S02 前篇；区分几何等距偏置与不同棱角处理意图。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S04",
+    "title": "Blake Courter. The Two-Body Field, Ξ. 2023-07-01",
+    "url": "https://www.blakecourter.com/2023/07/01/two-body-field.html",
+    "read_scope": "网页正文",
+    "relevance": "S02 系列后篇；间隙、中心面和两体场。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S05",
+    "title": "Luo H, Wang X, Lukens B. Variational Analysis on the Signed Distance Functions. JOTA 180:751–774, 2019",
+    "url": "https://link.springer.com/article/10.1007/s10957-018-1414-2",
+    "read_scope": "出版元数据与摘要；未取得付费全文",
+    "relevance": "S02 引用；2018 在线发表、2019 卷期；用于确认严格分析文献，不据摘要声称已核对全部定理。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S06",
+    "title": "Shapiro V. Semi-analytic geometry with R-functions. Acta Numerica 16:239–303, 2007",
+    "url": "https://doi.org/10.1017/S096249290631001X",
+    "read_scope": "出版社摘要和元数据；未取得全文",
+    "relevance": "S02 引用；说明逻辑保持隐式构造并非新概念。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S07",
+    "title": "Mercury / hg_sdf. A GLSL library for building signed distance functions",
+    "url": "https://mercury.sexy/hg_sdf/",
+    "read_scope": "项目说明及算子示例",
+    "relevance": "S02 引用；特别强调 distance bound 与 Lipschitz 条件。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S08",
+    "title": "Sampson 1982（S02 给出的 DOI）",
+    "url": "https://doi.org/10.1016/0146-664X(82)90101-0",
+    "read_scope": "原链接访问失败；只读到 S02 的转述公式",
+    "relevance": "不把未取得的原文列为已读；报告的归一化反例由本文独立推导。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S09",
+    "title": "Inigo Quilez. Smooth minimum",
+    "url": "https://iquilezles.org/articles/smin/",
+    "read_scope": "403；只核对 S02 中的引用关系",
+    "relevance": "不声称读过原文；平滑布尔改变几何的分析使用数学定义而非该页面未读细节。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S10",
+    "title": "Matt Keeter. Fidget 项目说明",
+    "url": "https://www.mattkeeter.com/projects/fidget/",
+    "read_scope": "项目正文重点章节：表达式、求值、区间、裁剪、JIT",
+    "relevance": "S01 直接引用；提供可复用的表达式求值技术。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S11",
+    "title": "mkeeter/fidget 官方仓库 README",
+    "url": "https://github.com/mkeeter/fidget",
+    "read_scope": "当前公开 README；未构建运行",
+    "relevance": "确认以 CPU 原生求值为重点、研究性项目与依赖风险。运行前仍须冻结版本。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S12",
+    "title": "Keeter M J. Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces. ACM TOG 39(4), Article 141, 2020",
+    "url": "https://www.mattkeeter.com/research/mpr/",
+    "read_scope": "作者项目页及预印本方法相关章节",
+    "relevance": "Fidget 的技术背景；GPU 分层区间评估和表达式裁剪；预印本：https://www.mattkeeter.com/research/mpr/keeter_mpr20.pdf 。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S13",
+    "title": "Matt Keeter. Gradients are the new intervals. 2025-05-14",
+    "url": "https://www.mattkeeter.com/blog/2025-05-14-gradients/",
+    "read_scope": "博客正文，含 normalization 与性能讨论",
+    "relevance": "区间与 Lipschitz 球界、归一化失败；其经验性结论不视作任意场上的安全性定理。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S14",
+    "title": "Barbier W, Sanchez M, Paris A, et al. Lipschitz Pruning: Hierarchical Simplification of Primitive-Based SDFs. 2025",
+    "url": "https://doi.org/10.1111/cgf.70057",
+    "read_scope": "Adobe 项目摘要、出版社可见方法文字、作者仓库",
+    "relevance": "S13 引用；Adobe：https://research.adobe.com/publication/lipschitz-pruning-hierarchical-simplification-of-primitive-based-sdfs/ ；作者实现：https://github.com/wbrbr/LipschitzPruning 。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S15",
+    "title": "Matt Keeter. A cautionary tale about continuity. 2025-04-12",
+    "url": "https://www.mattkeeter.com/blog/2025-04-12-continuity/",
+    "read_scope": "博客正文",
+    "relevance": "周期取模可能使符号跨过不连续面而不经过零值。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S16",
+    "title": "Matt Keeter. Zero-crossing logic for robust meshing. 2017-05-13",
+    "url": "https://www.mattkeeter.com/blog/2017-05-13-implicit-zeros/",
+    "read_scope": "博客正文相关逻辑章节",
+    "relevance": "接触、补集与零值归属；其网格策略需重新解释为输运事件语义。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S17",
+    "title": "Matt Keeter. Finding bounding boxes with interval math. 2017-09-29",
+    "url": "https://www.mattkeeter.com/blog/2017-09-29-bounds/",
+    "read_scope": "博客正文",
+    "relevance": "区间依赖导致包围盒松弛，不能假定自动求界必然高效。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S18",
+    "title": "Matt Keeter. A simple adversarial model for dual contouring. 2023-04-23",
+    "url": "https://www.mattkeeter.com/blog/2023-04-23-adversarial/",
+    "read_scope": "博客正文",
+    "relevance": "QEF 顶点逃逸、尺度不变反例，用于网格基准的局限说明。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S19",
+    "title": "Matt Keeter. Please Steal my Meshing Algorithm Idea. 2026-07-03",
+    "url": "https://www.mattkeeter.com/blog/2026-07-03-meshing/",
+    "read_scope": "博客正文及后续引用入口",
+    "relevance": "作者明确未实现的算法构想；不能作为成熟无自交后端。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S20",
+    "title": "Sawhney R, Miller B, Gkioulekas I, Crane K. Walk on Stars. SIGGRAPH 2023",
+    "url": "https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/",
+    "read_scope": "作者项目页与摘要",
+    "relevance": "S01 中 Monte Carlo techniques 的实际链接；处理椭圆 PDE，不能直接等同中子 Boltzmann 输运。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S21",
+    "title": "Intact Solutions 官方网站",
+    "url": "https://intact-solutions.com/",
+    "read_scope": "产品主页定位信息",
+    "relevance": "S01 quadrature 链接；仅作隐式几何分析工具背景，未据此断言中子输运能力。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S22",
+    "title": "Hart J C. Sphere tracing: A geometric method for the antialiased ray tracing of implicit surfaces. The Visual Computer 12(10):527–545, 1996",
+    "url": "https://experts.illinois.edu/en/publications/sphere-tracing-a-geometric-method-for-the-antialiased-ray-tracing/",
+    "read_scope": "作者所在机构摘要与书目信息",
+    "relevance": "安全步进的前作；DOI：10.1007/s003710050084。报告条件与公式由本文明确推导。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S23",
+    "title": "Galin E, Guérin E, Paris A, Peytavie A. Segment Tracing Using Local Lipschitz Bounds. CGF 39(2):545–554, 2020",
+    "url": "https://doi.org/10.1111/cgf.13951",
+    "read_scope": "出版社摘要、作者项目页及公开论文入口",
+    "relevance": "局部线段 Lipschitz 界。作者页：https://perso.liris.cnrs.fr/apeytavi/website/publication/hal-02507361/ 。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S24",
+    "title": "Shriwise P C, Davis A, Jacobson L J, Wilson P P H. Particle Tracking Acceleration via Signed Distance Fields in DAGMC. M&C 2017",
+    "url": "https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf",
+    "read_scope": "公开会议论文方法相关章节；交叉核对期刊检索片段",
+    "relevance": "几何预筛选已有核工程前作。期刊版 NET 49:1189–1198，DOI：10.1016/j.net.2017.08.008；两版页码不可混用。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S25",
+    "title": "OpenMC. Theory and Methodology: Geometry",
+    "url": "https://docs.openmc.org/en/stable/methods/geometry.html",
+    "read_scope": "官方文档",
+    "relevance": "CSG、曲面、universe/lattice、最近边界和边界条件。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S26",
+    "title": "OpenMC 源码：include/openmc/surface.h",
+    "url": "https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h",
+    "read_scope": "develop 分支公开源码接口，只读",
+    "relevance": "evaluate / distance / normal；读取 raw 同路径。是访问时观察，未冻结 commit、未编译。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S27",
+    "title": "OpenMC 源码：src/geometry.cpp",
+    "url": "https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp",
+    "read_scope": "develop 分支 distance_to_boundary 等相关代码，只读",
+    "relevance": "几何层级和 lattice 边界；读取 raw 同路径。未作完整源码审计。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S28",
+    "title": "OpenMC. openmc.DAGMCUniverse",
+    "url": "https://docs.openmc.org/en/stable/pythonapi/generated/openmc.DAGMCUniverse.html",
+    "read_scope": "官方 API 文档",
+    "relevance": "DAGMC 接入基线；它不是任意程序隐式场的现成适配器。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S29",
+    "title": "OpenMOC. Method of Characteristics",
+    "url": "https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html",
+    "read_scope": "官方方法文档",
+    "relevance": "特征线方程、平源区、轨迹积分；该理论页面以二维推导为主。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S30",
+    "title": "OpenMOC. Writing Python Input Files, §3.6.1 3D Track Generation",
+    "url": "https://mit-crpg.github.io/OpenMOC/usersguide/input.html",
+    "read_scope": "官方用户文档相关章节",
+    "relevance": "TrackGenerator3D 和 OTF_STACKS；确认不能称 OpenMOC 只支持二维。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S31",
+    "title": "OpenMOC 源码：src/Geometry.cpp",
+    "url": "https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp",
+    "read_scope": "develop 分支 segmentize3D / FSR 相关源码，只读",
+    "relevance": "直接三维分段的候选接入位置；读取 raw 同路径，未构建运行。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S32",
+    "title": "OpenMOC 源码：src/TrackGenerator3D.cpp",
+    "url": "https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp",
+    "read_scope": "develop 分支构造、segmentizeExtruded 等代码，只读",
+    "relevance": "区分显式三维与拉伸区 OTF 路径；不是所有模式都天然适配连续扭转。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S33",
+    "title": "OpenMC. Theory and Methodology: Random Ray",
+    "url": "https://docs.openmc.org/en/stable/methods/random_ray.html",
+    "read_scope": "官方方法文档相关章节",
+    "relevance": "多群、随机特征线与 MOC 的关系；不能当作连续能蒙卡。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S34",
+    "title": "OpenMC. Random Ray Solver",
+    "url": "https://docs.openmc.org/en/stable/usersguide/random_ray.html",
+    "read_scope": "官方用户文档相关章节",
+    "relevance": "源区网格和线性源；隐式后端兼容性仍是拟验证任务。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S35",
+    "title": "de Lambert S, et al. Modeling the consequences of fuel assembly bowing on PWR core neutronics using a Monte-Carlo code. ANE 134:330–341, 2019",
+    "url": "https://www.sciencedirect.com/science/article/abs/pii/S0306454919303342",
+    "read_scope": "出版社摘要及可见方法片段；未取得全文",
+    "relevance": "弯曲堆叠/旋转段与解析参考的比较；DOI：10.1016/j.anucene.2019.06.017。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S36",
+    "title": "Zou H, et al. Investigation on the modeling capability of ALPHA code for fuel rod deformation. ANE 169:108892, 2022",
+    "url": "https://www.sciencedirect.com/science/article/abs/pii/S0306454921007696",
+    "read_scope": "出版社检索摘要与可见片段；直接打开遇 403，未取得全文",
+    "relevance": "倾斜、C 形弯曲、肿胀及 MOC-EX/网格映射；DOI：10.1016/j.anucene.2021.108892。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S37",
+    "title": "Song Q, Wang R, Guo H, Gu H. MC/MOC two-step method for reactor physics analysis of helical cruciform fuel reactor. PNE 180:105607, 2025",
+    "url": "https://www.sciencedirect.com/science/article/pii/S0149197025000058",
+    "read_scope": "出版社检索片段及作者单位书目；未取得全文",
+    "relevance": "DOI：10.1016/j.pnucene.2025.105607。作者单位确认：https://me.sjtu.edu.cn/en/FullTimeTeacher/guohui.html 。不复述未独立核对的数值性能。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S38",
+    "title": "Vicini D, Speierer S, Jakob W. Differentiable Signed Distance Function Rendering. SIGGRAPH 2022",
+    "url": "https://rgl.epfl.ch/publications/Vicini2022SDF",
+    "read_scope": "作者项目页与摘要",
+    "relevance": "边界/可见性不连续梯度需专门处理；对输运的迁移是研究建议。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S39",
+    "title": "OpenMOC. Track Generation",
+    "url": "https://mit-crpg.github.io/OpenMOC/methods/track_generation.html",
+    "read_scope": "官方方法文档",
+    "relevance": "循环轨迹、反射边界连接与角度/间距约束。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S40",
+    "title": "Subgrid Marching Tetrahedra",
+    "url": "https://markjgillespie.com/Research/SubgridMarchingTets/",
+    "read_scope": "已打开作者项目入口；本轮仅作延伸阅读",
+    "relevance": "S19 的 2026 年引用，后续核查多交点与薄特征算法，不作为本报告已验证的方法结论。",
+    "access_date": "2026-11-10"
+  },
+  {
+    "id": "S41",
+    "title": "ADS: Random Sampling of Occupancy Functions using Adaptive Delaunay Scaffolding",
+    "url": "https://www.cs.ubc.ca/labs/imager/tr/2026/ads/",
+    "read_scope": "已打开作者项目入口；本轮仅作延伸阅读",
+    "relevance": "S19 更新中提及的 2026 年研究；占据函数与距离场须区分。",
+    "access_date": "2026-11-10"
+  }
+]

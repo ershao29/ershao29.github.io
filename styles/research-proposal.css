@@ -1,0 +1,183 @@
+/* Extend the site's shared article styles for long research documents. */
+.research-proposal {
+  font-family: Arial, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+}
+
+.research-proposal main {
+  width: min(calc(100% - 2rem), 68rem);
+  max-width: none;
+  box-sizing: border-box;
+  padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+.research-proposal .research-header h1 {
+  max-width: 25em;
+  font-size: clamp(1.85rem, 4vw, 2.65rem);
+  line-height: 1.3;
+}
+
+.research-header p {
+  max-width: 50em;
+}
+
+.research-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.research-nav a {
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #d6e2ec;
+  border-radius: 0.35rem;
+}
+
+.research-nav a[aria-current="page"] {
+  border-color: #aac3da;
+  background: #edf5fb;
+  color: #17446d;
+  font-weight: 700;
+}
+
+.research-proposal .research-article {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.research-article h2 {
+  margin-top: 2.5rem;
+}
+
+.research-article h3 {
+  margin-top: 1.75rem;
+}
+
+.research-article h2,
+.research-article h3 {
+  scroll-margin-top: 1.25rem;
+}
+
+.research-article :target {
+  outline: 2px solid #aac3da;
+  outline-offset: 0.25rem;
+}
+
+.research-contents {
+  padding: 0.85rem 1rem;
+  border: 1px solid #dce3e9;
+  border-radius: 0.5rem;
+  background: #f6f9fc;
+}
+
+.research-contents summary {
+  color: #253e56;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.research-contents .research-contents-list {
+  columns: 2 20rem;
+  margin-bottom: 0;
+  padding-left: 0;
+  list-style: none;
+}
+
+.research-contents-list li {
+  break-inside: avoid;
+  margin: 0 0 0.35rem;
+}
+
+.research-table {
+  max-width: 100%;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.research-table table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.research-table th,
+.research-table td {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #dce3e9;
+  text-align: left;
+  vertical-align: top;
+}
+
+.research-table th {
+  background: #edf5fb;
+  color: #253e56;
+}
+
+.research-table tbody tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+.research-article pre {
+  max-width: 100%;
+  padding: 1rem;
+  overflow: auto;
+  background: #f3f6f8;
+  border-radius: 0.4rem;
+  overflow-wrap: normal;
+}
+
+.research-article pre code {
+  font-size: 0.9rem;
+}
+
+.research-article math[display="block"] {
+  max-width: 100%;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+}
+
+.research-workflow {
+  padding: 1.25rem;
+  border: 1px solid #d6e2ec;
+  border-radius: 0.5rem;
+  background: #f6f9fc;
+}
+
+.research-workflow ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  margin: 0;
+  list-style-position: inside;
+}
+
+.research-workflow ol > li {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid #dce3e9;
+  border-radius: 0.35rem;
+  background: white;
+}
+
+.research-workflow strong {
+  color: #253e56;
+}
+
+.research-workflow span {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.research-workflow ul {
+  margin-top: 0.2rem;
+}
+
+.research-workflow ul li + li {
+  margin-top: 0;
+}
+
+.research-workflow figcaption {
+  margin-top: 0.85rem;
+}
