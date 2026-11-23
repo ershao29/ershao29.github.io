@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Organization Verification | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Organization Verification</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Preservation and language</a></li>
+  <li><a href="#section-2">Existing tests</a></li>
+  <li><a href="#section-3">Fresh output-generation checks</a></li>
+</ul>
+</details>
+<p>Checked November 10, 2026 (Asia/Shanghai).</p>
+
+<h2 id="section-1">Preservation and language</h2>
+
+<ul>
+<li>SHA-256 checks match <strong>66 original workspace files</strong> at their original paths and <strong>2,749 source-snapshot files</strong> at their reorganized paths. Finder metadata is excluded.</li>
+<li>All <strong>eight PDF copies</strong> match their respective original files byte for byte, including the two copied from <code>paper-sdf</code>.</li>
+<li>UTF-8-decodable text throughout <code>summary</code>, including upstream source documentation and demo report templates, was scanned for CJK characters. No CJK text or filenames were found. Mathematical notation and author names retain standard Unicode where appropriate.</li>
+<li>All pages of the eight PDFs were text-extracted for a CJK-language check. Original English PDFs remain unchanged.</li>
+<li>JSON documents parse successfully. Authored English Markdown links resolve locally; code examples and mathematical expressions are excluded from link parsing.</li>
+</ul>
+
+<p>The <a href="../../catalog/inventory.html">collection inventory</a> records final paths, sizes, hashes, and provenance. The <a href="original-materials.html">original-material index</a> links retained Chinese originals to their English companions.</p>
+
+<h2 id="section-2">Existing tests</h2>
+
+<p>Executed from the corresponding directories under <code>summary/demos</code>:</p>
+
+<pre><code class="language-bash">PYTHONDONTWRITEBYTECODE=1 python3 -m unittest -v
+</code></pre>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Demo</th>
+<th align="right">Existing tests</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>DAGMC-SDF</td>
+<td align="right">16</td>
+<td>Passed</td>
+</tr>
+<tr>
+<td>SDF-grid ray tracing</td>
+<td align="right">12</td>
+<td>Passed</td>
+</tr>
+<tr>
+<td>Total</td>
+<td align="right">28</td>
+<td>Passed</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>These tests check the independent teaching implementations, not OpenMC/OpenMOC transport results or production geometry certification.</p>
+
+<h2 id="section-3">Fresh output-generation checks</h2>
+
+<p>Smoke runs used separate temporary directories, preserving archived measurements:</p>
+
+<pre><code class="language-bash">python3 demo.py --samples 50 --histories 1 --output ./example-output/smoke-dagmc
+python3 demo.py --grid 8 --size 24 --rays 40 --output ./example-output/smoke-ray
+</code></pre>
+
+<p>Both produced English reports. The DAGMC smoke run recorded zero query-contract mismatches, zero event-decision mismatches, and zero sampled bound violations. The ray-tracing run recorded zero hit and shadow Boolean mismatches. Relative figure references resolve in the generated ray report.</p>
+
+<p>The ray report was also checked to use relative links after localization. Archived CSV/JSON measurements and figures remain distinct from these small fresh checks. No nuclear data or full transport solver was built or run during organization.</p>
+
+    </main>
+  </body>
+</html>

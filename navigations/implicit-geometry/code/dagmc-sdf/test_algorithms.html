@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>test_algorithms.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>test_algorithms.py</h1>
+        <a href="../../labs/dagmc-sdf.html">dagmc-sdf 实验导航</a> · <a href="../../downloads/dagmc-sdf.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>"""Numerical/geometry checks for the teaching implementation; unittest only."""
+import math
+import random
+import unittest
+from sdf_preconditioner import (
+    Sphere, SphericalShell, TriangleMesh, UniformGrid, Prefilter, add, sub, mul,
+    norm, unit, isotropic, uniform_ball, triangle_closest, triangle_ray,
+    box_triangles, hollow_box, octasphere, fixed_utilization,
+    exponential_utilization, alpha_min, simulate_walk,
+)
+
+
+<span id="GeometryTests">class GeometryTests(unittest.TestCase):</span>
+    def test_triangle_face_edge_vertex_and_ray(self):
+        tri = ((0., 0., 0.), (2., 0., 0.), (0., 2., 0.))
+        self.assertEqual(triangle_closest((.5, .5, 3), tri), (.5, .5, 0.))
+        self.assertEqual(triangle_closest((-1, -1, 0), tri), (0., 0., 0.))
+        self.assertAlmostEqual(norm(sub(triangle_closest((2, 2, 0), tri), (1, 1, 0))), 0.)
+        self.assertAlmostEqual(triangle_ray((.5, .5, 3), (0, 0, -1), tri), 3.)
+        self.assertIsNone(triangle_ray((3, 3, 3), (0, 0, -1), tri))
+
+    def test_oriented_cube_and_cavity_signed_samples(self):
+        cube = TriangleMesh(box_triangles(3))
+        for p, answer in [((0, 0, 0), 3.), ((2.5, .2, .1), .5),
+                          ((4, 0, 0), -1.), ((4, 4, 0), -math.sqrt(2))]:
+            self.assertAlmostEqual(cube.inside_distance(p), answer)
+        hollow = hollow_box()
+        self.assertGreater(hollow.inside_distance((2, .2, .3)), 0)
+        self.assertLess(hollow.inside_distance((0, 0, 0)), 0)
+        self.assertFalse(hollow.contains((0, 0, 0)))
+        self.assertTrue(hollow.contains((2, .2, .3)))
+
+    def test_bvh_nearest_and_ray_against_brute_force(self):
+        mesh = octasphere(2., 2)
+        rng = random.Random(7)
+        for _ in range(100):
+            p = tuple(rng.uniform(-3, 3) for _ in range(3))
+            ref = min(norm(sub(p, triangle_closest(p, t))) for t in mesh.triangles)
+            self.assertAlmostEqual(mesh.closest(p).distance, ref, places=11)
+            u = isotropic(rng)
+            hits = [triangle_ray(p, u, t) for t in mesh.triangles]
+            expected = min((t for t in hits if t is not None), default=None)
+            got = mesh.first_hit(p, u)
+            if expected is None:
+                self.assertIsNone(got)
+            else:
+                self.assertAlmostEqual(got, expected, places=10)
+
+    def test_sphere_and_shell_first_roots(self):
+        sphere, shell = Sphere(3), SphericalShell(1, 3)
+        self.assertAlmostEqual(sphere.first_hit((0, 0, 0), (1, 0, 0)), 3.)
+        self.assertAlmostEqual(shell.first_hit((-2, 0, 0), (1, 0, 0)), 1.)
+        self.assertIsNone(shell.first_hit((-2, 0, 0), (1, 0, 0), .5))
+        self.assertAlmostEqual(sphere.first_hit((4, 0, 0), (-1, 0, 0)), 1.)
+
+
+<span id="GridTests">class GridTests(unittest.TestCase):</span>
+    def test_multilinear_exactness_and_grid_boundary(self):
+        fun = lambda p: 1+2*p[0]-3*p[1]+p[2]+p[0]*p[1]*p[2]
+        bounds = ((-2., -1., 0.), (2., 3., 6.))
+        grid = UniformGrid.build(bounds, (4, 2, 3), fun)
+        for p in [(0.12, .7, 2.6), bounds[0], bounds[1], (2, -.4, 1.)]:
+            self.assertAlmostEqual(grid.sample(p).value, fun(p), places=12)
+        self.assertIsNone(grid.sample((2.000001, 0, 1)))
+
+    def test_error_intervals_include_nonsmooth_true_sdf(self):
+        rng = random.Random(8)
+        for shape in [Sphere(3), SphericalShell(1, 3)]:
+            grid = UniformGrid.build(shape.bounds, (7, 8, 9), shape.inside_distance)
+            for _ in range(1000):
+                p = tuple(rng.uniform(-3, 3) for _ in range(3))
+                truth = shape.value(p)
+                for mode in ('paper', 'rms'):
+                    s = grid.sample(p, mode)
+                    self.assertLessEqual(s.lower, truth+1e-12)
+                    self.assertGreaterEqual(s.upper, truth-1e-12)
+
+    def test_node_errors_are_added_to_interpolation_bound(self):
+        shape = Sphere(2)
+        grid = UniformGrid.build(shape.bounds, 6, shape.inside_distance, node_error=.1)
+        for i in range(len(grid.values)):
+            grid.values[i] += .1 if i % 2 else -.1
+        rng = random.Random(2)
+        for _ in range(500):
+            p = tuple(rng.uniform(-2, 2) for _ in range(3))
+            s = grid.sample(p, 'rms')
+            self.assertLessEqual(abs(s.value-shape.value(p)), s.error+1e-12)
+
+    def test_invalid_domain_and_unknown_error_mode(self):
+        with self.assertRaises(ValueError):
+            UniformGrid.build(((0, 0, 0), (1, 1, 1)), 0, lambda p: 0.)
+        with self.assertRaises(ValueError):
+            UniformGrid(((0, 0, 0), (1, 1, 1)), 1, [0.]*7)
+        grid = UniformGrid.build(((-1,)*3, (1,)*3), 2, lambda p: 1-norm(p))
+        with self.assertRaises(ValueError):
+            grid.sample((0, 0, 0), 'unbounded')
+
+
+<span id="PrefilterTests">class PrefilterTests(unittest.TestCase):</span>
+    def test_containment_fallback_and_exact_distance_contract(self):
+        shape = Sphere(3)
+        grid = UniformGrid.build(shape.bounds, 12, shape.inside_distance)
+        q = Prefilter(shape, grid, 'rms')
+        self.assertTrue(q.contains((0, 0, 0)))
+        self.assertFalse(q.contains((4, 0, 0)))
+        self.assertTrue(q.contains((3, 0, 0)))  # boundary delegates to oracle
+        self.assertEqual(q.counts.containment_fallbacks, 2)
+        d = q.safety_distance((.1, .2, .3))
+        self.assertFalse(d.exact)
+        self.assertLessEqual(d.value, abs(shape.value((.1, .2, .3))))
+        exact = q.safety_distance((.1, .2, .3), require_exact=True)
+        self.assertTrue(exact.exact)
+        self.assertAlmostEqual(exact.value, abs(shape.value((.1, .2, .3))))
+
+    def test_nonconvex_endpoints_inside_are_not_a_certificate(self):
+        shape = SphericalShell(1, 3)
+        grid = UniformGrid.build(shape.bounds, 16, shape.inside_distance)
+        q = Prefilter(shape, grid, 'rms')
+        p, end = (-2., .1, 0.), (2., .1, 0.)
+        self.assertTrue(shape.contains(p) and shape.contains(end))
+        self.assertFalse(q.certifies_no_crossing(p, end))
+        self.assertIsNotNone(q.next_event(p, (1, 0, 0), 4.))
+
+    def test_no_skipped_ray_crosses_sphere_or_shell(self):
+        rng = random.Random(10)
+        skipped = 0
+        for shape in (Sphere(3), SphericalShell(.8, 3)):
+            grid = UniformGrid.build(shape.bounds, 12, shape.inside_distance)
+            for error in ('paper', 'rms'):
+                q = Prefilter(shape, grid, error)
+                for _ in range(1500):
+                    p = uniform_ball(rng, 3)
+                    if not shape.contains(p):
+                        continue
+                    u, d = isotropic(rng), rng.uniform(0, 6)
+                    end = add(p, mul(u, d))
+                    for mode in ('single', 'pair'):
+                        if q.certifies_no_crossing(p, end, mode):
+                            skipped += 1
+                            self.assertIsNone(shape.first_hit(p, u, d))
+        self.assertGreater(skipped, 100)
+
+    def test_mesh_prefilter_returns_same_crossing_as_mesh_oracle(self):
+        mesh = hollow_box()
+        grid = UniformGrid.build(mesh.bounds, 8, mesh.inside_distance)
+        q = Prefilter(mesh, grid, 'rms')
+        rng = random.Random(78)
+        for _ in range(200):
+            p = tuple(rng.uniform(-3, 3) for _ in range(3))
+            if not mesh.contains(p):
+                continue
+            u, d = isotropic(rng), rng.uniform(.01, 8)
+            a, b = mesh.first_hit(p, u, d), q.next_event(p, u, d)
+            if a is None:
+                self.assertIsNone(b)
+            else:
+                self.assertAlmostEqual(a, b, places=11)
+
+    def test_paired_random_walk_matches_baseline(self):
+        shape = Sphere(3)
+        grid = UniformGrid.build(shape.bounds, 12, shape.inside_distance)
+        baseline = simulate_walk(shape, grid, .7, 60, mode='baseline', max_collisions=100)
+        accelerated = simulate_walk(shape, grid, .7, 60, mode='pair', max_collisions=100)
+        self.assertEqual(baseline['traces'], accelerated['traces'])
+        self.assertEqual(baseline['escapes'], accelerated['escapes'])
+        self.assertGreater(accelerated['queries']['skipped_rays'], 0)
+
+
+<span id="TheoryTests">class TheoryTests(unittest.TestCase):</span>
+    def test_fixed_utilization_and_alpha_domain(self):
+        self.assertEqual(fixed_utilization(0, 3), 1.)
+        self.assertAlmostEqual(fixed_utilization(1.5, 3), .375)
+        self.assertEqual(fixed_utilization(3, 3), 0.)
+        self.assertEqual(fixed_utilization(4, 3), 0.)
+        self.assertEqual(alpha_min(.5, .1, 3), 0.)
+        self.assertEqual(alpha_min(1, 3, 3), math.pi)
+        for r in (0., .1, 1., 2.9):
+            for d in (0., .1, 1., 2.99, 3., 4.):
+                self.assertTrue(0 &lt;= alpha_min(r, d, 3) &lt;= math.pi)
+
+    def test_exponential_formula_against_independent_quadrature(self):
+        # Midpoint integration in probability space avoids a small-lambda layer.
+        n = 12000
+        for a in (.001, .1, 1., 10., 1e3):
+            numerical = sum(fixed_utilization(-a*math.log(1-(k+.5)/n), 1.)
+                            for k in range(n))/n
+            self.assertAlmostEqual(exponential_utilization(a, 1.), numerical, delta=5e-5)
+        self.assertAlmostEqual(exponential_utilization(1., 1.), .5-.5/math.e)
+        self.assertAlmostEqual(exponential_utilization(1e8, 1.)*1e8, 5/12, places=7)
+
+    def test_fixed_model_against_uniform_volume_sampling(self):
+        rng = random.Random(123)
+        n, successes = 20000, 0
+        for _ in range(n):
+            p, u = uniform_ball(rng, 1), isotropic(rng)
+            q = add(p, mul(u, .5))
+            successes += 2-norm(p)-norm(q) &gt; .5
+        target = fixed_utilization(.5, 1.)
+        self.assertLess(abs(successes/n-target), 6*math.sqrt(target*(1-target)/n))
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)</code></pre>
+    </main>
+  </body>
+</html>

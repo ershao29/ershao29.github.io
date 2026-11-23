@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Evidence index · 41 source records | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Evidence index · 41 source records</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">S01 · Blake Courter. Geometry as Code. 2026-02-07</a></li>
+  <li><a href="#section-2">S02 · Blake Courter. Unit Gradient Fields: SDFs, UGFs, and their friends. 2023-05-18</a></li>
+  <li><a href="#section-3">S03 · Blake Courter. What do we mean by offset? 2023-05-05</a></li>
+  <li><a href="#section-4">S04 · Blake Courter. The Two-Body Field, Ξ. 2023-07-01</a></li>
+  <li><a href="#section-5">S05 · Luo H, Wang X, Lukens B. Variational Analysis on the Signed Distance Functions. JOTA 180:751–774, 2019</a></li>
+  <li><a href="#section-6">S06 · Shapiro V. Semi-analytic geometry with R-functions. Acta Numerica 16:239–303, 2007</a></li>
+  <li><a href="#section-7">S07 · Mercury / hg_sdf. A GLSL library for building signed distance functions</a></li>
+  <li><a href="#section-8">S08 · Sampson 1982 (DOI supplied by S02)</a></li>
+  <li><a href="#section-9">S09 · Inigo Quilez. Smooth minimum</a></li>
+  <li><a href="#section-10">S10 · Matt Keeter. Fidget project description</a></li>
+  <li><a href="#section-11">S11 · mkeeter/fidget official repository README</a></li>
+  <li><a href="#section-12">S12 · Keeter M J. Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces. ACM TOG 39(4), Article 141, 2020</a></li>
+  <li><a href="#section-13">S13 · Matt Keeter. Gradients are the new intervals. 2025-05-14</a></li>
+  <li><a href="#section-14">S14 · Barbier W, Sanchez M, Paris A, et al. Lipschitz Pruning: Hierarchical Simplification of Primitive-Based SDFs. 2025</a></li>
+  <li><a href="#section-15">S15 · Matt Keeter. A cautionary tale about continuity. 2025-04-12</a></li>
+  <li><a href="#section-16">S16 · Matt Keeter. Zero-crossing logic for robust meshing. 2017-05-13</a></li>
+  <li><a href="#section-17">S17 · Matt Keeter. Finding bounding boxes with interval math. 2017-09-29</a></li>
+  <li><a href="#section-18">S18 · Matt Keeter. A simple adversarial model for dual contouring. 2023-04-23</a></li>
+  <li><a href="#section-19">S19 · Matt Keeter. Please Steal my Meshing Algorithm Idea. 2026-07-03</a></li>
+  <li><a href="#section-20">S20 · Sawhney R, Miller B, Gkioulekas I, Crane K. Walk on Stars. SIGGRAPH 2023</a></li>
+  <li><a href="#section-21">S21 · Intact Solutions official website</a></li>
+  <li><a href="#section-22">S22 · Hart J C. Sphere tracing: A geometric method for the antialiased ray tracing of implicit surfaces. The Visual Computer 12(10):527–545, 1996</a></li>
+  <li><a href="#section-23">S23 · Galin E, Guérin E, Paris A, Peytavie A. Segment Tracing Using Local Lipschitz Bounds. CGF 39(2):545–554, 2020</a></li>
+  <li><a href="#section-24">S24 · Shriwise P C, Davis A, Jacobson L J, Wilson P P H. Particle Tracking Acceleration via Signed Distance Fields in DAGMC. M&amp;C 2017</a></li>
+  <li><a href="#section-25">S25 · OpenMC. Theory and Methodology: Geometry</a></li>
+  <li><a href="#section-26">S26 · OpenMC source: include/openmc/surface.h</a></li>
+  <li><a href="#section-27">S27 · OpenMC source: src/geometry.cpp</a></li>
+  <li><a href="#section-28">S28 · OpenMC. openmc.DAGMCUniverse</a></li>
+  <li><a href="#section-29">S29 · OpenMOC. Method of Characteristics</a></li>
+  <li><a href="#section-30">S30 · OpenMOC. Writing Python Input Files, §3.6.1 3D Track Generation</a></li>
+  <li><a href="#section-31">S31 · OpenMOC source: src/Geometry.cpp</a></li>
+  <li><a href="#section-32">S32 · OpenMOC source: src/TrackGenerator3D.cpp</a></li>
+  <li><a href="#section-33">S33 · OpenMC. Theory and Methodology: Random Ray</a></li>
+  <li><a href="#section-34">S34 · OpenMC. Random Ray Solver</a></li>
+  <li><a href="#section-35">S35 · de Lambert S, et al. Modeling the consequences of fuel assembly bowing on PWR core neutronics using a Monte-Carlo code. ANE 134:330–341, 2019</a></li>
+  <li><a href="#section-36">S36 · Zou H, et al. Investigation on the modeling capability of ALPHA code for fuel rod deformation. ANE 169:108892, 2022</a></li>
+  <li><a href="#section-37">S37 · Song Q, Wang R, Guo H, Gu H. MC/MOC two-step method for reactor physics analysis of helical cruciform fuel reactor. PNE 180:105607, 2025</a></li>
+  <li><a href="#section-38">S38 · Vicini D, Speierer S, Jakob W. Differentiable Signed Distance Function Rendering. SIGGRAPH 2022</a></li>
+  <li><a href="#section-39">S39 · OpenMOC. Track Generation</a></li>
+  <li><a href="#section-40">S40 · Subgrid Marching Tetrahedra</a></li>
+  <li><a href="#section-41">S41 · ADS: Random Sampling of Occupancy Functions using Adaptive Delaunay Scaffolding</a></li>
+</ul>
+</details>
+<h2 id="section-1">S01 · Blake Courter. Geometry as Code. 2026-02-07</h2>
+
+<p>Webpage body</p>
+
+<p>User-specified; Omega's positioning, technical relationships, and early stage. An authorial research vision, not transport validation.</p>
+
+<a href="https://www.blakecourter.com/2026/02/07/geometry-as-code.html">https://www.blakecourter.com/2026/02/07/geometry-as-code.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-2">S02 · Blake Courter. Unit Gradient Fields: SDFs, UGFs, and their friends. 2023-05-18</h2>
+
+<p>Webpage body</p>
+
+<p>User-specified; field classification, boundary maps, and Booleans. Rigorous mathematical conditions require supplementation.</p>
+
+<a href="https://www.blakecourter.com/2023/05/18/field-notation.html">https://www.blakecourter.com/2023/05/18/field-notation.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-3">S03 · Blake Courter. What do we mean by offset? 2023-05-05</h2>
+
+<p>Relevant webpage sections</p>
+
+<p>Predecessor to S02; equidistant geometric offsets versus different corner-treatment intentions.</p>
+
+<a href="https://www.blakecourter.com/2023/05/05/what-is-offset.html">https://www.blakecourter.com/2023/05/05/what-is-offset.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-4">S04 · Blake Courter. The Two-Body Field, Ξ. 2023-07-01</h2>
+
+<p>Webpage body</p>
+
+<p>Later article in the S02 series; gaps, middle surfaces, and two-body fields.</p>
+
+<a href="https://www.blakecourter.com/2023/07/01/two-body-field.html">https://www.blakecourter.com/2023/07/01/two-body-field.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-5">S05 · Luo H, Wang X, Lukens B. Variational Analysis on the Signed Distance Functions. JOTA 180:751–774, 2019</h2>
+
+<p>Publication metadata and abstract; paywalled full text unavailable in the original review</p>
+
+<p>Cited by S02; online in 2018, volume publication in 2019. Identifies rigorous analysis literature; the abstract does not establish verification of every theorem.</p>
+
+<a href="https://link.springer.com/article/10.1007/s10957-018-1414-2">https://link.springer.com/article/10.1007/s10957-018-1414-2</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-6">S06 · Shapiro V. Semi-analytic geometry with R-functions. Acta Numerica 16:239–303, 2007</h2>
+
+<p>Publisher abstract and metadata; full text unavailable</p>
+
+<p>Cited by S02; logic-preserving implicit constructions are established prior work.</p>
+
+<a href="https://doi.org/10.1017/S096249290631001X">https://doi.org/10.1017/S096249290631001X</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-7">S07 · Mercury / hg_sdf. A GLSL library for building signed distance functions</h2>
+
+<p>Project description and operator examples</p>
+
+<p>Cited by S02; emphasizes distance bounds and Lipschitz conditions.</p>
+
+<a href="https://mercury.sexy/hg_sdf/">https://mercury.sexy/hg_sdf/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-8">S08 · Sampson 1982 (DOI supplied by S02)</h2>
+
+<p>Original link failed; only the formula restated by S02 was read</p>
+
+<p>Unavailable originals are not counted as read. The normalization counterexample is independently derived here.</p>
+
+<a href="https://doi.org/10.1016/0146-664X(82)90101-0">https://doi.org/10.1016/0146-664X(82)90101-0</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-9">S09 · Inigo Quilez. Smooth minimum</h2>
+
+<p>HTTP 403; only the citation relationship in S02 was checked</p>
+
+<p>No claim to have read the original. Analysis of geometry-changing smooth Booleans uses mathematical definitions rather than inaccessible page details.</p>
+
+<a href="https://iquilezles.org/articles/smin/">https://iquilezles.org/articles/smin/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-10">S10 · Matt Keeter. Fidget project description</h2>
+
+<p>Project sections on expressions, evaluation, intervals, pruning, and JIT</p>
+
+<p>Directly cited by S01; reusable expression-evaluation techniques.</p>
+
+<a href="https://www.mattkeeter.com/projects/fidget/">https://www.mattkeeter.com/projects/fidget/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-11">S11 · mkeeter/fidget official repository README</h2>
+
+<p>Public README at the original review date; no build/run</p>
+
+<p>Confirms native CPU evaluation, research status, and dependency risk. Pin a version before execution.</p>
+
+<a href="https://github.com/mkeeter/fidget">https://github.com/mkeeter/fidget</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-12">S12 · Keeter M J. Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces. ACM TOG 39(4), Article 141, 2020</h2>
+
+<p>Author project page and relevant preprint methods sections</p>
+
+<p>Fidget background: GPU hierarchical interval evaluation and expression pruning. Preprint: https://www.mattkeeter.com/research/mpr/keeter_mpr20.pdf .</p>
+
+<a href="https://www.mattkeeter.com/research/mpr/">https://www.mattkeeter.com/research/mpr/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-13">S13 · Matt Keeter. Gradients are the new intervals. 2025-05-14</h2>
+
+<p>Blog body including normalization and performance</p>
+
+<p>Intervals, Lipschitz ball bounds, and normalization failure; practical observations are not safety theorems for arbitrary fields.</p>
+
+<a href="https://www.mattkeeter.com/blog/2025-05-14-gradients/">https://www.mattkeeter.com/blog/2025-05-14-gradients/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-14">S14 · Barbier W, Sanchez M, Paris A, et al. Lipschitz Pruning: Hierarchical Simplification of Primitive-Based SDFs. 2025</h2>
+
+<p>Adobe project abstract, visible publisher methods, author repository</p>
+
+<p>Cited by S13. Adobe: https://research.adobe.com/publication/lipschitz-pruning-hierarchical-simplification-of-primitive-based-sdfs/ ; implementation: https://github.com/wbrbr/LipschitzPruning .</p>
+
+<a href="https://doi.org/10.1111/cgf.70057">https://doi.org/10.1111/cgf.70057</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-15">S15 · Matt Keeter. A cautionary tale about continuity. 2025-04-12</h2>
+
+<p>Blog body</p>
+
+<p>Periodic modulo can change signs across a discontinuity without passing through zero.</p>
+
+<a href="https://www.mattkeeter.com/blog/2025-04-12-continuity/">https://www.mattkeeter.com/blog/2025-04-12-continuity/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-16">S16 · Matt Keeter. Zero-crossing logic for robust meshing. 2017-05-13</h2>
+
+<p>Relevant blog logic sections</p>
+
+<p>Contact, complements, and zero ownership; reinterpret meshing rules as transport-event semantics.</p>
+
+<a href="https://www.mattkeeter.com/blog/2017-05-13-implicit-zeros/">https://www.mattkeeter.com/blog/2017-05-13-implicit-zeros/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-17">S17 · Matt Keeter. Finding bounding boxes with interval math. 2017-09-29</h2>
+
+<p>Blog body</p>
+
+<p>Interval dependency loosens bounding boxes; automatic bounds are not necessarily efficient.</p>
+
+<a href="https://www.mattkeeter.com/blog/2017-09-29-bounds/">https://www.mattkeeter.com/blog/2017-09-29-bounds/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-18">S18 · Matt Keeter. A simple adversarial model for dual contouring. 2023-04-23</h2>
+
+<p>Blog body</p>
+
+<p>Escaped QEF vertices and scale-invariant counterexamples illustrate mesh-reference limitations.</p>
+
+<a href="https://www.mattkeeter.com/blog/2023-04-23-adversarial/">https://www.mattkeeter.com/blog/2023-04-23-adversarial/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-19">S19 · Matt Keeter. Please Steal my Meshing Algorithm Idea. 2026-07-03</h2>
+
+<p>Blog body and follow-up reference entry points</p>
+
+<p>Explicitly unimplemented algorithm idea; not a mature intersection-free meshing backend.</p>
+
+<a href="https://www.mattkeeter.com/blog/2026-07-03-meshing/">https://www.mattkeeter.com/blog/2026-07-03-meshing/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-20">S20 · Sawhney R, Miller B, Gkioulekas I, Crane K. Walk on Stars. SIGGRAPH 2023</h2>
+
+<p>Author project page and abstract</p>
+
+<p>The actual Monte Carlo techniques link in S01; elliptic PDEs, not directly neutron Boltzmann transport.</p>
+
+<a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-21">S21 · Intact Solutions official website</h2>
+
+<p>Product-homepage positioning</p>
+
+<p>The quadrature link in S01; background on implicit geometry analysis, not evidence of neutron-transport capability.</p>
+
+<a href="https://intact-solutions.com/">https://intact-solutions.com/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-22">S22 · Hart J C. Sphere tracing: A geometric method for the antialiased ray tracing of implicit surfaces. The Visual Computer 12(10):527–545, 1996</h2>
+
+<p>Author-institution abstract and bibliographic record</p>
+
+<p>Safe-stepping prior work; DOI: 10.1007/s003710050084. Conditions and formulas are explicitly derived in this report.</p>
+
+<a href="https://experts.illinois.edu/en/publications/sphere-tracing-a-geometric-method-for-the-antialiased-ray-tracing/">https://experts.illinois.edu/en/publications/sphere-tracing-a-geometric-method-for-the-antialiased-ray-tracing/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-23">S23 · Galin E, Guérin E, Paris A, Peytavie A. Segment Tracing Using Local Lipschitz Bounds. CGF 39(2):545–554, 2020</h2>
+
+<p>Publisher abstract, author project page, and public-paper entry</p>
+
+<p>Local segment Lipschitz bounds. Author page: https://perso.liris.cnrs.fr/apeytavi/website/publication/hal-02507361/ .</p>
+
+<a href="https://doi.org/10.1111/cgf.13951">https://doi.org/10.1111/cgf.13951</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-24">S24 · Shriwise P C, Davis A, Jacobson L J, Wilson P P H. Particle Tracking Acceleration via Signed Distance Fields in DAGMC. M&amp;C 2017</h2>
+
+<p>Relevant public conference-paper methods; journal search excerpts cross-checked</p>
+
+<p>Prior nuclear-engineering geometry prefiltering. Journal version: NET 49:1189–1198, DOI: 10.1016/j.net.2017.08.008. Do not mix the versions' page numbers.</p>
+
+<a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-25">S25 · OpenMC. Theory and Methodology: Geometry</h2>
+
+<p>Official documentation</p>
+
+<p>CSG, surfaces, universes/lattices, nearest boundaries, and boundary conditions.</p>
+
+<a href="https://docs.openmc.org/en/stable/methods/geometry.html">https://docs.openmc.org/en/stable/methods/geometry.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-26">S26 · OpenMC source: include/openmc/surface.h</h2>
+
+<p>Public develop-branch interfaces; read-only</p>
+
+<p>evaluate / distance / normal; corresponding raw path inspected. Point-in-time observation without a pinned commit or compilation.</p>
+
+<a href="https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h">https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-27">S27 · OpenMC source: src/geometry.cpp</h2>
+
+<p>Relevant develop-branch code including distance_to_boundary; read-only</p>
+
+<p>Geometry hierarchy and lattice boundaries; corresponding raw path inspected. Not a complete source audit.</p>
+
+<a href="https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp">https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-28">S28 · OpenMC. openmc.DAGMCUniverse</h2>
+
+<p>Official API documentation</p>
+
+<p>DAGMC integration baseline, not a ready-made adapter for arbitrary programmatic implicit fields.</p>
+
+<a href="https://docs.openmc.org/en/stable/pythonapi/generated/openmc.DAGMCUniverse.html">https://docs.openmc.org/en/stable/pythonapi/generated/openmc.DAGMCUniverse.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-29">S29 · OpenMOC. Method of Characteristics</h2>
+
+<p>Official methods documentation</p>
+
+<p>Characteristic equations, flat-source regions, and track integration; this theory page mainly derives the 2D case.</p>
+
+<a href="https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html">https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-30">S30 · OpenMOC. Writing Python Input Files, §3.6.1 3D Track Generation</h2>
+
+<p>Relevant official user-guide sections</p>
+
+<p>TrackGenerator3D and OTF_STACKS; OpenMOC is not limited to 2D.</p>
+
+<a href="https://mit-crpg.github.io/OpenMOC/usersguide/input.html">https://mit-crpg.github.io/OpenMOC/usersguide/input.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-31">S31 · OpenMOC source: src/Geometry.cpp</h2>
+
+<p>Relevant develop-branch segmentize3D/FSR code; read-only</p>
+
+<p>Candidate direct-3D-segmentation entry; corresponding raw path inspected without build/run.</p>
+
+<a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-32">S32 · OpenMOC source: src/TrackGenerator3D.cpp</h2>
+
+<p>Develop-branch construction and segmentizeExtruded code; read-only</p>
+
+<p>Distinguishes explicit 3D and extruded-region OTF paths; continuous twisting is not supported automatically by every mode.</p>
+
+<a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp">https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-33">S33 · OpenMC. Theory and Methodology: Random Ray</h2>
+
+<p>Relevant official methods sections</p>
+
+<p>Multigroup random characteristics and their relation to MOC; not continuous-energy MC.</p>
+
+<a href="https://docs.openmc.org/en/stable/methods/random_ray.html">https://docs.openmc.org/en/stable/methods/random_ray.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-34">S34 · OpenMC. Random Ray Solver</h2>
+
+<p>Relevant official user-guide sections</p>
+
+<p>Source-region meshes and linear sources; implicit-backend compatibility remains to be validated.</p>
+
+<a href="https://docs.openmc.org/en/stable/usersguide/random_ray.html">https://docs.openmc.org/en/stable/usersguide/random_ray.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-35">S35 · de Lambert S, et al. Modeling the consequences of fuel assembly bowing on PWR core neutronics using a Monte-Carlo code. ANE 134:330–341, 2019</h2>
+
+<p>Publisher abstract and visible methods excerpts; no full text</p>
+
+<p>Bowing approximations using stacked/rotated segments versus analytic references. DOI: 10.1016/j.anucene.2019.06.017.</p>
+
+<a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454919303342">https://www.sciencedirect.com/science/article/abs/pii/S0306454919303342</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-36">S36 · Zou H, et al. Investigation on the modeling capability of ALPHA code for fuel rod deformation. ANE 169:108892, 2022</h2>
+
+<p>Publisher search abstract/excerpts; direct access returned 403; no full text</p>
+
+<p>Tilt, C-shaped bowing, swelling, and MOC-EX/mesh mapping. DOI: 10.1016/j.anucene.2021.108892.</p>
+
+<a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454921007696">https://www.sciencedirect.com/science/article/abs/pii/S0306454921007696</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-37">S37 · Song Q, Wang R, Guo H, Gu H. MC/MOC two-step method for reactor physics analysis of helical cruciform fuel reactor. PNE 180:105607, 2025</h2>
+
+<p>Publisher search excerpts and author-affiliation bibliography; no full text</p>
+
+<p>DOI: 10.1016/j.pnucene.2025.105607. Affiliation confirmation: https://me.sjtu.edu.cn/en/FullTimeTeacher/guohui.html . Numerical performance not independently checked is not restated.</p>
+
+<a href="https://www.sciencedirect.com/science/article/pii/S0149197025000058">https://www.sciencedirect.com/science/article/pii/S0149197025000058</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-38">S38 · Vicini D, Speierer S, Jakob W. Differentiable Signed Distance Function Rendering. SIGGRAPH 2022</h2>
+
+<p>Author project page and abstract</p>
+
+<p>Boundary/visibility discontinuities need special derivative treatment; transport adaptation is a proposal.</p>
+
+<a href="https://rgl.epfl.ch/publications/Vicini2022SDF">https://rgl.epfl.ch/publications/Vicini2022SDF</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-39">S39 · OpenMOC. Track Generation</h2>
+
+<p>Official methods documentation</p>
+
+<p>Cyclic tracks, reflective connections, and angular/spacing constraints.</p>
+
+<a href="https://mit-crpg.github.io/OpenMOC/methods/track_generation.html">https://mit-crpg.github.io/OpenMOC/methods/track_generation.html</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-40">S40 · Subgrid Marching Tetrahedra</h2>
+
+<p>Author project entry opened; extension reading only</p>
+
+<p>2026 reference from S19; multiple intersections and thin-feature methods require further review, not treated as validated here.</p>
+
+<a href="https://markjgillespie.com/Research/SubgridMarchingTets/">https://markjgillespie.com/Research/SubgridMarchingTets/</a>
+<p>Accessed 2026-11-10</p>
+
+<h2 id="section-41">S41 · ADS: Random Sampling of Occupancy Functions using Adaptive Delaunay Scaffolding</h2>
+
+<p>Author project entry opened; extension reading only</p>
+
+<p>2026 work mentioned in S19 updates; distinguish occupancy functions from distance fields.</p>
+
+<a href="https://www.cs.ubc.ca/labs/imager/tr/2026/ads/">https://www.cs.ubc.ca/labs/imager/tr/2026/ads/</a>
+<p>Accessed 2026-11-10</p>
+
+    </main>
+  </body>
+</html>

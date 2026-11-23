@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DAGMC-SDF Teaching Demo | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>DAGMC-SDF Teaching Demo</h1>
+        <a href="../../../labs/dagmc-sdf.html">实验导航、源码与下载</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Run</a></li>
+  <li><a href="#section-2">Code and contracts</a></li>
+  <li><a href="#section-3">Outputs</a></li>
+  <li><a href="#section-4">Scope</a></li>
+</ul>
+</details>
+<p>An independent Python companion to Shriwise et al., M&amp;C 2017. Read the <a href="../../literature/notes/dagmc-sdf-particle-tracking.html">English paper summary</a> and <a href="output/run-report.html">archived run report</a>.</p>
+
+<h2 id="section-1">Run</h2>
+
+<p>Core algorithms, experiments, and tests require only Python 3.9+ standard libraries. From the workspace root:</p>
+
+<pre><code class="language-bash">cd summary/demos/dagmc-sdf
+python3 -m unittest -v
+python3 demo.py --samples 5000 --histories 200
+</code></pre>
+
+<p>The default <code>output</code> directory is relative to the script. Running the demo overwrites matching output filenames. Use <code>--output</code> to choose another directory. Seeds are fixed by default; timings vary with load.</p>
+
+<p>Optional plots require matplotlib:</p>
+
+<pre><code class="language-bash">python3 -m pip install -r requirements-plots.txt
+python3 plot_results.py --output output
+</code></pre>
+
+<h2 id="section-2">Code and contracts</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../../../code/dagmc-sdf/sdf_preconditioner.html">sdf_preconditioner.py</a></td>
+<td>Triangle nearest points, AABB BVH, directional intersections, grids, interpolation, prefilters, utilization, walks</td>
+</tr>
+<tr>
+<td><a href="../../../code/dagmc-sdf/demo.html">demo.py</a></td>
+<td>Uniform-volume sampling, bounds, query benchmarks, random walks, nonconvex example</td>
+</tr>
+<tr>
+<td><a href="../../../code/dagmc-sdf/test_algorithms.html">test_algorithms.py</a></td>
+<td>16 tests with independent references, theory integrals, and paired-history consistency</td>
+</tr>
+<tr>
+<td><a href="../../../code/dagmc-sdf/plot_results.html">plot_results.py</a></td>
+<td>Utilization, field, safe-ball, angular, and performance PNG/SVG figures</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The field is <strong>positive inside</strong>. <code>paper</code> uses the voxel diagonal; <code>rms</code> is the explanatory tighter Lipschitz bound from the notes, not the original paper algorithm.</p>
+
+<pre><code class="language-python">from sdf_preconditioner import Sphere, UniformGrid, Prefilter
+
+volume = Sphere(10.0)
+grid = UniformGrid.build(volume.bounds, 16, volume.inside_distance)
+query = Prefilter(volume, grid, error_mode="paper")
+inside = query.contains((0.0, 0.0, 0.0))
+lower = query.safety_distance((0.2, 0.0, 0.0))
+exact = query.safety_distance((0.2, 0.0, 0.0), require_exact=True)
+# Direction must be unit length. None means no boundary before the event.
+hit = query.next_event((0.0, 0.0, 0.0), (1.0, 0.0, 0.0), 0.5, mode="pair")
+print(inside, lower, exact, hit, query.counts)
+</code></pre>
+
+<p><code>DistanceAnswer.exact=False</code> identifies a conservative lower bound. Callers requiring the reference geometry distance must request <code>require_exact=True</code>. Supply a valid <code>node_error</code> for uncertain grid nodes; an empirical RMS error is not a certificate.</p>
+
+<h2 id="section-3">Outputs</h2>
+
+<ul>
+<li>
+<a href="../../../resources/dagmc-sdf/output/metrics.json">metrics.json</a>: configuration, correctness checks, builds, and walks.</li>
+<li>
+<a href="../../../resources/dagmc-sdf/output/utilization.csv">utilization.csv</a>: fixed/exponential-flight theory, independent samples, and field certificates.</li>
+<li>
+<a href="../../../resources/dagmc-sdf/output/benchmark.csv">benchmark.csv</a>: timings and ray/triangle counts on the same reference geometry.</li>
+<li>
+<a href="../../../resources/dagmc-sdf/output/error-bounds.csv">error-bounds.csv</a>: measured interpolation error versus bounds.</li>
+<li>
+<a href="output/run-report.html">run-report.md</a> and <a href="../../../resources/dagmc-sdf/output/test-results.txt">test-results.txt</a>: archived readable results.</li>
+<li>PNG/SVG pairs: utilization, safe-ball certificates, distance field, angular restrictions, mesh benchmarks.</li>
+</ul>
+
+<p><img src="../../../resources/dagmc-sdf/output/utilization.png" alt="Utilization" loading="lazy"></p>
+
+<h2 id="section-4">Scope</h2>
+
+<p>The AABB hierarchy illustrates the paper's OBB-BVH idea. Generated triangle meshes are closed and consistently oriented. This program does not integrate MOAB, Cubit, DAGMC, or MCNP. Analytic spheres validate probability formulas; mesh fields and reference queries use the same triangle geometry.</p>
+
+<p>Walks include exponential flights, isotropic scattering, absorbing outer boundaries, and a collision cap, without real nuclear data, energy changes, electron physics, or general multi-material tracking. <code>capped</code> histories remain in statistics and are not escapes.</p>
+
+<p>Existing tests establish consistency for their finite cases; floating predicates and guards are educational. Archived small Python benchmarks reduced ray calls but did not improve total query time. The paper's transport speedups are separate historical evidence.</p>
+
+    </main>
+  </body>
+</html>

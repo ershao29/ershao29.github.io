@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Doctoral Proposal Reading Guide | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Doctoral Proposal Reading Guide</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Start here</a></li>
+  <li><a href="#section-2">A focused thesis structure</a></li>
+  <li><a href="#section-3">Literature path</a></li>
+  <li><a href="#section-4">Runnable demonstrations</a></li>
+  <li><a href="#section-5">Collection layout</a></li>
+  <li><a href="#section-6">Reliability and provenance</a></li>
+</ul>
+</details>
+<p><strong>Recommended theme:</strong> Verifiable Implicit Geometry and Three-Dimensional Neutron Transport for Complex Deformed Reactor Cores.</p>
+
+<p>Prepared November 10, 2026. This is the English research collection for developing a doctoral proposal. Original Chinese notes, research documents, and demos remain at their original workspace paths. The related Chinese grant-application PDF is excluded at the user's request.</p>
+
+<p>The central question is how a material-aware implicit geometry program can supply reliable interface events and complete characteristic-track segments, while controlling the resulting transport error at an affordable cost.</p>
+
+<h2 id="section-1">Start here</h2>
+
+<ol>
+<li>Read <a href="research-proposal/research-directions.html">Research directions</a> for the main argument, mathematical counterexamples, priorities, and novelty boundaries.</li>
+<li>Read <a href="research-proposal/technical-roadmap.html">Technical roadmap</a> for OpenMC/OpenMOC integration, query contracts, validation cases, metrics, and the proposed schedule.</li>
+<li>Read <a href="research-proposal/evidence-and-sources.html">Evidence and sources</a> before using external claims in a formal proposal. Its 41 records retain their historical reading/access limitations.</li>
+<li>Read <a href="research-proposal/grant-proposal-analysis.html">Grant-proposal analysis</a> to connect the topic to the existing SDF-MOC application and its unresolved technical issues.</li>
+<li>Use the <a href="literature/README.html">literature map</a> and <a href="source-code/README.html">source-code guide</a> for deeper reading and implementation planning.</li>
+</ol>
+
+<p>The <a href="research-proposal/topic-discussion.html">earlier topic discussion</a> provides broader alternatives, including unfitted deterministic methods, response adaptation, sensitivities, and neural representations. <a href="../catalog/sources.html">sources.json</a> provides machine-readable references; <a href="references/related-repositories.html">related repositories</a> preserves the existing software survey.</p>
+
+<h2 id="section-2">A focused thesis structure</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Research component</th>
+<th>Question</th>
+<th>Evidence to produce</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reliable multi-material queries</td>
+<td>Can every relevant interface be located under thin layers, grazing rays, contact, and hierarchy?</td>
+<td>Stated field assumptions, bounded events, complete material sequences, explicit unresolved/fallback states</td>
+</tr>
+<tr>
+<td>3D MOC segmentation and error control</td>
+<td>How do interface and source-region errors affect optical thickness, volumes, and responses?</td>
+<td>Independent segment/volume checks, controlled response convergence, geometry-aware adaptation</td>
+</tr>
+<tr>
+<td>Local compilation for MC/MOC</td>
+<td>Can pruning and caching preserve internal semantics and reduce total cost?</td>
+<td>Equal-accuracy comparisons, build amortization, cache behavior, memory, and failure regimes</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>OpenMC conservative prefiltering is an early implementation candidate. Random Ray and geometry derivatives are later extensions after the forward geometry is reliable. Targets and schedules in these documents are proposals, not measured achievements.</p>
+
+<h2 id="section-3">Literature path</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Read</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="literature/notes/variational-analysis-signed-distance.html">Variational SDF analysis</a></td>
+<td>Exact distances, normals, convexity, nonsmoothness, and counterexamples</td>
+</tr>
+<tr>
+<td><a href="literature/notes/adaptive-signed-distance-computation.html">Adaptive SDF computation</a></td>
+<td>Discrete-boundary initialization, propagation, anisotropic adaptation, and representation errors</td>
+</tr>
+<tr>
+<td><a href="literature/notes/dagmc-sdf-particle-tracking.html">DAGMC-SDF tracking</a></td>
+<td>Direct nuclear prior art: conservative query prefiltering with original-kernel fallback</td>
+</tr>
+<tr>
+<td><a href="literature/notes/ray-tracing-sdf-grids.html">SDF-grid ray tracing</a></td>
+<td>Direct roots of trilinear reconstructed geometry, traversal, and normal semantics</td>
+</tr>
+<tr>
+<td><a href="literature/notes/supporting-papers.html">Supporting papers</a></td>
+<td>Procedural distance bounds, Euclidean mapping, Walk on Stars, and the CSN PDE framework</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The collection contains <strong>eight English PDFs</strong>. Six were already in the workspace; the Dapogny–Frey and SDF-grid papers were copied from <code>paper-sdf</code>. See the <a href="literature/README.html">paper catalog</a> for filenames and reading scope.</p>
+
+<h2 id="section-4">Runnable demonstrations</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Demo</th>
+<th>Learn from it</th>
+<th>Read first</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="demos/dagmc-sdf/README.html">DAGMC-SDF prefilter</a></td>
+<td>Distance intervals, safe-flight certificates, utilization, fallback, and a nonconvex counterexample</td>
+<td><a href="demos/dagmc-sdf/output/run-report.html">Archived results</a></td>
+</tr>
+<tr>
+<td><a href="demos/sdf-ray-tracing/README.html">SDF-grid ray tracing</a></td>
+<td>Cubic roots, complete local root selection, software traversal, normals, and quantization</td>
+<td>
+<a href="demos/sdf-ray-tracing/output/run-report.html">Archived results</a>, <a href="demos/sdf-ray-tracing/output-quantized/run-report.html">quantized results</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Both are independent Python teaching programs. Their results are separate from published GPU or nuclear-transport performance. The field convention also differs: the DAGMC demo is positive inside; the grid-tracing demo and main proposal are negative inside.</p>
+
+<p>From the workspace root:</p>
+
+<pre><code class="language-bash">(cd summary/demos/dagmc-sdf &amp;&amp; python3 -m unittest -v)
+(cd summary/demos/sdf-ray-tracing &amp;&amp; python3 -m unittest -v)
+</code></pre>
+
+<p>See each demo guide for output-generation commands. They write the chosen output directory, so use an explicit <code>--output</code> when preserving archived measurements.</p>
+
+<h2 id="section-5">Collection layout</h2>
+
+<pre><code class="language-text">summary/
+├── README.md                 Reading entry and proposal focus
+├── research-proposal/        Directions, roadmap, analysis, evidence, source index
+├── literature/
+│   ├── README.md             Catalog and reading priorities
+│   ├── papers/               Eight English original PDFs
+│   └── notes/                English reading summaries
+├── demos/
+│   ├── dagmc-sdf/            Code, English guide, archived data and figures
+│   └── sdf-ray-tracing/      Code, English guide, original and quantized outputs
+├── source-code/
+│   ├── README.md             Implementation reading guide
+│   ├── openmc-develop/       Preserved source snapshot
+│   └── openmoc-develop/      Preserved source snapshot
+└── references/               Repository list, provenance, inventory, verification
+</code></pre>
+
+<h2 id="section-6">Reliability and provenance</h2>
+
+<p>General implicit fields, exact SDFs, conservative distance bounds, and interpolated zero surfaces have different contracts. A distance lower bound is not a directional boundary hit. Correct endpoint labels do not exclude an intervening thin layer. Material regions and FSRs are distinct partitions. Cross-solver agreement is insufficient if both solvers share the same faulty geometry.</p>
+
+<p>The English package includes full English adaptations of the research-direction/roadmap/evidence documents and condensed English companions for the long literature and grant analyses. Detailed Chinese originals remain available through the <a href="references/original-materials.html">original-material index</a>.</p>
+
+<p><a href="references/organization-notes.html">Organization notes</a> explain preservation and source versions. <a href="references/verification.html">Verification</a> records checks performed during organization. The source snapshots and original PDFs retain their original bytes; local links in the authored English guides use relative paths.</p>
+
+    </main>
+  </body>
+</html>

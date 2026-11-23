@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Supporting Papers: Proposal Reading Annotations | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Supporting Papers: Proposal Reading Annotations</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Improved Ray Casting of Procedural Distance Bounds</a></li>
+  <li><a href="#section-2">Euclidean Distance Mapping</a></li>
+  <li><a href="#section-3">Walk on Stars</a></li>
+  <li><a href="#section-4">Curved-Surface Nodal Framework (CSN)</a></li>
+  <li><a href="#section-5">Next reading actions</a></li>
+</ul>
+</details>
+<p>Prepared November 10, 2026. These short annotations use the local files' title pages, abstracts, and opening context. They are reading priorities rather than completed chapter-by-chapter reviews; numerical claims below remain attributed to the papers.</p>
+
+<h2 id="section-1">Improved Ray Casting of Procedural Distance Bounds</h2>
+
+<p><a href="https://doi.org/10.1080/2165347X.2015.1033069">Paper source</a>. Benjamin Keinert, Henry Schafer, Johann Korndorfer, Urs Ganse, Marc Stamminger. The PDF labels Journal of Graphics Tools 17(4):127–138 with a 2013 issue year, while its cover records online publication July 9, 2015. <a href="https://doi.org/10.1080/2165347X.2015.1033069">DOI</a>.</p>
+
+<p>The abstract introduces safe overrelaxation, self-intersection handling, convex-object acceleration, screen-space candidates when tracing fails to converge, and fixed-point treatment of discontinuity artifacts. It concerns procedural distance bounds, so a field can support conservative advancement without being an exact SDF.</p>
+
+<p>For the thesis, inspect the overrelaxation acceptance/fallback conditions and robustness at repeated boundary starts. A screen-space best candidate is a rendering-quality policy; its suitability for physical segment lengths requires separate proof. Preserve the distinction between a safe step and an accurate directional event.</p>
+
+<h2 id="section-2">Euclidean Distance Mapping</h2>
+
+<p><a href="https://doi.org/10.1016/0146-664X(80)90054-4">Paper source</a>. Per-Erik Danielsson, Computer Graphics and Image Processing 14:227–248 (1980).</p>
+
+<p>The paper studies sequential distance propagation in binary images using a two-component descriptor. Its abstract reports small-error Euclidean maps with two scans including forward/backward row movement, and discusses expansion/shrinking and skeletons. The introduction contrasts sequential propagation with iterative parallel updates and city-block/chessboard metrics.</p>
+
+<p>Use it as historical background for discrete Euclidean distance transforms. Pixel-center distance, continuous boundary distance, signed distance, and transport-safe bounds are different targets. The abstract's small-error characterization should not be promoted to a universal exactness theorem for arbitrary 3D geometry.</p>
+
+<h2 id="section-3">Walk on Stars</h2>
+
+<p><a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">Paper source</a>. Rohan Sawhney, Bailey Miller, Ioannis Gkioulekas, Keenan Crane, ACM TOG 42(4), 2023. <a href="https://doi.org/10.1145/3592398">DOI</a>.</p>
+
+<p>WoSt extends grid-free Monte Carlo treatment of linear elliptic PDEs to mixed Dirichlet and Neumann conditions using star-shaped domains and reflecting Brownian motion. The abstract identifies visibility-silhouette queries and a normal-augmented BVH as key geometric ingredients.</p>
+
+<p>This explains the Monte Carlo link in Geometry as Code. Useful themes include geometry-query interfaces, progressive pointwise solutions, and complex-boundary handling. Brownian elliptic-PDE sampling does not replace directional, energy-dependent neutron collisions and fission. A diffusion study would require explicit physical assumptions.</p>
+
+<h2 id="section-4">Curved-Surface Nodal Framework (CSN)</h2>
+
+<p><a href="https://ssrn.com/abstract=7300024">Paper source</a>, originally <code>ssrn-7300024.pdf</code>. Zhou Xiaoyu, Wang Yizhen, Du Zhengxin, Li Jining, Yin Wen, Xu Ning, Li Fu, Xu Yunlin, Hao Chen. The PDF identifies a <strong>non-peer-reviewed preprint</strong>. <a href="https://ssrn.com/abstract=7300024">SSRN record</a>.</p>
+
+<p>The abstract separates analytic surface equations defining curved nodal domains from high-order local polynomial solution approximation. It presents a formulation based on a general transport equation and reports neutron, steady/transient thermal, and coupled tests. A helical-cruciform example and comparisons with a fine finite-element reference are author-reported examples, not experiments reproduced during this organization.</p>
+
+<p>This is a high-priority novelty comparison: determine its geometry family, interface representation, integration rules, conservation, neutron discretization, and error/performance baseline. Compare the proposed reliable MC/MOC interface and complete traversal contract against what CSN actually implements. Continuous curved geometry alone should not carry the thesis's novelty claim.</p>
+
+<h2 id="section-5">Next reading actions</h2>
+
+<p>Read the full methods and error sections before quoting numerical gains. Add a structured evidence record for CSN to a future review rather than silently expanding the historical 41-source index. Distinguish same-geometry query acceleration from changed geometry representation and from changed solution approximation in every comparison.</p>
+
+    </main>
+  </body>
+</html>

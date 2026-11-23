@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDF Modeling for Complex-Core MOC: Grant Proposal Analysis | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>SDF Modeling for Complex-Core MOC: Grant Proposal Analysis</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Scientific problem and assessment</a></li>
+  <li><a href="#section-2">2. Motivation and existing alternatives</a></li>
+  <li><a href="#section-3">3. Bottlenecks and corrections</a></li>
+  <li><a href="#section-4">4. Relationship to DAGMC-SDF prior work</a></li>
+  <li><a href="#section-5">5. Proposed research tasks</a></li>
+  <li><a href="#section-6">6. Mathematical requirements</a></li>
+  <li><a href="#section-7">7. Historical remote-code observations</a></li>
+  <li><a href="#section-8">8. Validation and defensible contributions</a></li>
+  <li><a href="#section-9">9. Primary references</a></li>
+</ul>
+</details>
+<p>Prepared November 10, 2026. This English summary condenses the original Chinese analysis, retained at its original workspace location. It covers the scientific rationale, proposed methods, literature corrections, historical code observations, and validation requirements for application <strong>1257050725</strong>, submitted in 2025. The original Chinese application PDF is deliberately excluded from this collection at the user's request; it remains in <code>paper-sdf</code>.</p>
+
+<p>The original application has 41 PDF pages. Printed body page numbers are one lower than PDF page numbers. Its 2026–2029 schedule describes proposed work, not demonstrated progress. The analysis excludes personal information and budgets.</p>
+
+<h2 id="section-1">1. Scientific problem and assessment</h2>
+
+<p>The application asks how continuously twisted or bent fuel rods and assemblies can be modeled faithfully while generating reliable, affordable three-dimensional MOC segments in every source region. Its proposed chain is:</p>
+
+<p><strong>Complex implicit geometry → SDF/CSG hierarchy → point location and ray intersection → 3D MOC validation.</strong></p>
+
+<p>Five conclusions guide topic selection:</p>
+
+<ol>
+<li>Geometry matters physically: deformation changes material interfaces, moderator gaps, leakage paths, local rates, and power distributions.</li>
+<li>SDFs expand geometry representations and query strategies. Source, angular, energy-group, and track-spacing discretization errors remain.</li>
+<li>Broad claims of the first SDF application in nuclear transport conflict with the 2017 DAGMC-SDF work [R1–R2].</li>
+<li>Direct implicit complex geometry, source-region partitioning, and complete MOC segmentation differ from DAGMC-SDF prefiltering and offer specific research opportunities. Their novelty still requires a systematic search.</li>
+<li>A function representing the correct shape need not provide exact Euclidean distances or safe ray steps after Booleans, twisting, or bending.</li>
+</ol>
+
+<h2 id="section-2">2. Motivation and existing alternatives</h2>
+
+<h3>Advanced fuel and deformation</h3>
+
+<p>The application motivates helical cruciform metallic fuel through thermal/structural design needs (PDF pp. 8–9). A neutronics model should either retain the continuous geometry or quantify the response errors introduced by circular, annular, or axially stepped equivalents. The benefits of fidelity must justify additional intersection costs.</p>
+
+<p>Bowing changes adjacent water gaps and moderation as well as fuel position. Validate the chain <strong>deformation parameters → interfaces/gaps → rates/power</strong>, rather than surface appearance alone. De Lambert et al. compare stacked/rotated-cylinder bowing approximations; ALPHA studies tilt, C-shaped bowing, swelling, MOC-EX, and mesh mapping [R3–R4]. Equivalent helical-fuel modeling and MC/MOC two-step methods are also established alternatives [R5–R6]. CAD-based MOC predates this proposal [R7].</p>
+
+<h3>Why 3D MOC needs more than a surface</h3>
+
+<p>MOC requires an ordered sequence</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><msub><mi>ℓ</mi><mi>i</mi></msub><mo>,</mo><mspace width="0.278em"/><msub><mstyle mathvariant="normal"><mi>m</mi><mi>a</mi><mi>t</mi><mi>e</mi><mi>r</mi><mi>i</mi><mi>a</mi><mi>l</mi></mstyle><mi>i</mi></msub><mo>,</mo><mspace width="0.278em"/><msub><mstyle mathvariant="normal"><mi>F</mi><mi>S</mi><mi>R</mi></mstyle><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">(\ell_i,\;\mathrm{material}_i,\;\mathrm{FSR}_i),</annotation></semantics></math></p>
+
+<p>where FSR means flat-source region. Adjacent equal materials may still require separate source regions. For a constant-source segment with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Σ</mi><mi>t</mi></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\Sigma_t&gt;0</annotation></semantics></math>,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ψ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>ψ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><mo>+</mo><mfrac><mi>Q</mi><msub><mi>Σ</mi><mi>t</mi></msub></mfrac><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\psi_{out}=\psi_{in}e^{-\Sigma_t\ell}
++\frac{Q}{\Sigma_t}(1-e^{-\Sigma_t\ell}).</annotation></semantics></math></p>
+
+<p>Here <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math> includes the chosen angular normalization; vacuum uses the appropriate limit. Intersection errors affect <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ℓ</mi><annotation encoding="application/x-tex">\ell</annotation></semantics></math> and optical thickness; wrong labels also change cross sections and sources [R8].</p>
+
+<p>Graphics contributes bounds, spatial acceleration, root solving, and parallel organization. Transport adds complete partitions, every valid crossing, volume consistency, and conservation. Visually acceptable rendering is insufficient evidence.</p>
+
+<h2 id="section-3">3. Bottlenecks and corrections</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Application's concern</th>
+<th>More precise interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Commercial CAD integration</td>
+<td>Dependency on interfaces and customization</td>
+<td>Compare conversion effort and resulting query quality</td>
+</tr>
+<tr>
+<td>CSG support</td>
+<td>Common libraries struggle with continuous twist/bend</td>
+<td>CSG is a Boolean solid construction, mathematically unrestricted to quadrics; libraries and solvers impose practical limits</td>
+</tr>
+<tr>
+<td>Axial stacking</td>
+<td>Fidelity increases with slice count and cost</td>
+<td>A useful competing approximation with response convergence</td>
+</tr>
+<tr>
+<td>CAD triangles</td>
+<td>More facets improve curved-surface fidelity but cost memory/queries</td>
+<td>Report meshing tolerance and geometric convergence</td>
+</tr>
+<tr>
+<td>Query complexity</td>
+<td>Recursive/multimethod geometry operations are costly</td>
+<td>Short-circuiting, caches, bounding boxes, and cheap analytic intersections matter</td>
+</tr>
+<tr>
+<td>Implicit evaluation</td>
+<td>A uniform function interface appears simple</td>
+<td>One call may still contain many primitives, Booleans, and transformations</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The application's BEAVRS assembly estimate is approximately <strong>20 billion track segments</strong> and <strong>200 billion lookup/intersection-related operations</strong>, assuming about ten operations per segment (PDF pp. 10–11). These are application estimates without a reproducible profiling setup at that location, not measurements made here.</p>
+
+<p>Claims of avoiding discretization need qualification: analytic implicit geometry may avoid stepped or faceted approximations for selected ideal shapes; sampling, interpolation, compression, reinitialization, and transport still introduce errors.</p>
+
+<h2 id="section-4">4. Relationship to DAGMC-SDF prior work</h2>
+
+<p>The <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">local PDF</a> contains a ResearchGate cover followed by the M&amp;C 2017 conference paper. The cover's DOI identifies the related journal version; conference PDF pages and journal pages must remain distinct [R1–R2].</p>
+
+<p>DAGMC-SDF retains triangulated CAD and the original geometry kernel, samples signed distances on regular grids, interpolates eight corner values, and skips expensive queries only when a conservative test certifies them unnecessary. It stores positive inside, opposite to this proposal's negative-inside convention.</p>
+
+<p>For the historical 10 cm water sphere, central 5 MeV source, and 100 million histories:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Implementation</th>
+<th align="right">Wall time (minutes)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native MCNP5</td>
+<td align="right">2.75</td>
+</tr>
+<tr>
+<td>DAGMC</td>
+<td align="right">25.13</td>
+</tr>
+<tr>
+<td>DAGMC + SDF</td>
+<td align="right">7.30</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The wall-time speedup is about <strong>3.44×</strong>, while the accelerated case remains about <strong>2.65×</strong> slower than native MCNP5. These are published historical results, not reproduced transport results.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>DAGMC-SDF 2017</th>
+<th>Proposed MOC work</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometry</td>
+<td>Triangle-based CAD retained</td>
+<td>Direct implicit complex shapes mixed with CSG</td>
+</tr>
+<tr>
+<td>Field</td>
+<td>Regular-grid sampled distances</td>
+<td>Primitives, Booleans, transformations</td>
+</tr>
+<tr>
+<td>Role</td>
+<td>Prefilter original queries</td>
+<td>Location, intersections, complete source segments</td>
+</tr>
+<tr>
+<td>Workload</td>
+<td>Candidate MC physical events</td>
+<td>Ordered MOC traversal and sweeps</td>
+</tr>
+<tr>
+<td>Key issues</td>
+<td>Bounds, utilization, memory, fallback</td>
+<td>Complete FSRs, thin layers, volumes, conservation</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>MC can skip boundary work when a collision is certified to occur first. MOC generally must find its next source boundary. The published speedup cannot predict MOC speedup.</p>
+
+<p>Other corrections in the analysis: Green's cited distance-field font work is from <strong>2007</strong>, not 2003; the application's Forcadel/2008 image-processing claim points to a mismatched Tatarchuk/2009 reference; a 1989 fractal-rendering paper does not establish the first SDF concept across disciplines. Claims of universal hundredfold DAGMC overhead or automatic hardware intersection for arbitrary SDFs are unsupported.</p>
+
+<h2 id="section-5">5. Proposed research tasks</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Task</th>
+<th>Planned work</th>
+<th>Application PDF pages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometry</td>
+<td>Ring/sector/moderator FSRs; Booleans; transforms; arrays; extrusion; bend/twist; normals</td>
+<td>17, 19–23</td>
+</tr>
+<tr>
+<td>Hybrid hierarchy</td>
+<td>Region, Cell, Universe, Lattice, Geometry; SDFCell/SDFSurface/functor concepts</td>
+<td>17, 23–25</td>
+</tr>
+<tr>
+<td>Tracking</td>
+<td>Sign-based containment, virtual grids/AABB/BVH, marching, segments</td>
+<td>18, 25–27</td>
+</tr>
+<tr>
+<td>Integration</td>
+<td>CORE-MOC implementation, regular CSG comparisons, complex DAGMC/MC references</td>
+<td>18, 27–28</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Preserve repeated-instance hierarchy and shared-interface identities. Unify local/global coordinates, parent clipping, boundary IDs, and query results. AABB and BVH are spatial acceleration structures and should not both be described generically as hash tables.</p>
+
+<p>The scientific questions should ask how to construct computable bounds after deformation, maintain material/FSR/hierarchy consistency, and choose analytic intersections, conservative advancement, local roots, and acceleration under an error budget.</p>
+
+<p>The application's proposed years are: 2026 geometry functions/visualization; 2027 hierarchy/SDFSurface; 2028 location/tracking; 2029 integration/validation. Preliminary visualizations establish only selected geometry feasibility.</p>
+
+<h2 id="section-6">6. Mathematical requirements</h2>
+
+<h3>Field types and safe steps</h3>
+
+<p>An exact SDF gives signed Euclidean boundary distance. A conservative nonnegative bound satisfies <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>b</mi><mo>≤</mo><mo>dist</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>Γ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">0\le b\le\operatorname{dist}(x,\Gamma)</annotation></semantics></math>. A general implicit field supplies sign/zeros but needs additional bounds.</p>
+
+<p>If <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>g</mi><annotation encoding="application/x-tex">g</annotation></semantics></math> is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math>-Lipschitz on the complete relevant domain, then</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>s</mi><mo>≤</mo><mo stretchy="false" form="prefix">|</mo><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mi>/</mi><mi>L</mi></mrow><annotation encoding="application/x-tex">\Delta s\le |g(x)|/L</annotation></semantics></math></p>
+
+<p>is conservative relative to its zero set. A gradient at one point does not establish a domain bound. A small lower bound is also not an upper bound on intersection-position error.</p>
+
+<p>Booleans preserve appropriate signs but generally not exact distances. For example, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">(</mo><mo>−</mo><mi>x</mi><mo>,</mo><mo>−</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">g(x,y)=\max(-x,-y)</annotation></semantics></math> represents the first quadrant, yet <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mo>−</mo><mn>1</mn><mo>,</mo><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">g(-1,-1)=1</annotation></semantics></math> while its true distance is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mn>2</mn></msqrt><annotation encoding="application/x-tex">\sqrt2</annotation></semantics></math>.</p>
+
+<p>For inverse twisting</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>R</mi><mo stretchy="false" form="prefix">(</mo><mo>−</mo><mi>k</mi><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"/><mi>g</mi><mo>=</mo><msub><mi>d</mi><mn>0</mn></msub><mo>∘</mo><mi>T</mi><mo>,</mo></mrow><annotation encoding="application/x-tex">T(x,y,z)=(R(-kz)(x,y),z),\qquad g=d_0\circ T,</annotation></semantics></math></p>
+
+<p>the full 3D Jacobian includes shear despite rigid rotations in individual sections. On a valid radial domain <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>≤</mo><msub><mi>R</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">r\le R_{max}</annotation></semantics></math>, the analysis derives the conservative example bound</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>J</mi><mi>T</mi></msub><msub><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msub><mo>≤</mo><mn>1</mn><mo>+</mo><mo stretchy="false" form="prefix">|</mo><mi>k</mi><mo stretchy="false" form="prefix">|</mo><msub><mi>R</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\|J_T\|_2\le1+|k|R_{max}.</annotation></semantics></math></p>
+
+<p>This is an explanatory derivation, not a proven tight bound or an implemented application algorithm. Bending and nonuniform scaling need their own bounds.</p>
+
+<h3>Starting inside, near a surface, or near tangency</h3>
+
+<p>Application Fig. 22 tests <code>g &lt; epsilon</code> for a hit and increments distance by <code>g</code>. Under negative-inside semantics an interior origin is immediately reported as a zero-distance hit; adding a negative value would advance backwards. Separate signed values, nonnegative steps, and hit tests. Exclude the old origin event using direction and region state.</p>
+
+<p>This is a pseudocode issue, not a demonstrated failure of a running SDF implementation.</p>
+
+<p>For a smooth transverse intersection,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>t</mi><mo>≈</mo><mfrac><mrow><mi>δ</mi><mi>n</mi></mrow><mrow><mo stretchy="false" form="prefix">|</mo><mi>n</mi><mo>⋅</mo><mi>ω</mi><mo stretchy="false" form="prefix">|</mo></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\delta t\approx\frac{\delta n}{|n\cdot\omega|}.</annotation></semantics></math></p>
+
+<p>Grazing rays amplify position errors; exact tangency invalidates this linearization. Same-sign endpoints may contain two crossings, and multiple roots may not switch materials. Isolate the nearest valid root, refine it, and verify labels on both sides. For trilinear fields, per-voxel ray equations are cubic, but their roots concern the interpolated surface [R12].</p>
+
+<h3>Materials, FSRs, and reflection</h3>
+
+<p>A union's exterior SDF cannot recover internal fuel/cladding interfaces. Require nonoverlapping covered regions, continuous complete track lengths, distinct FSR identities, and independently checked volumes/centroids. Marching search steps do not automatically become physical MOC segments.</p>
+
+<p>Smooth nonzero gradients provide normals even for general implicit fields. Corners/seams need explicit rules. Curved reflection also needs discrete-angle mapping and track connectivity; a normal function alone does not solve those issues.</p>
+
+<h3>Performance</h3>
+
+<p>Separate analytic primitives, bounded implicit roots, sampled-field voxel roots, and distance-only prefilters. Custom geometry requires its own intersection program even with hardware BVH traversal [R14]. Include preprocessing, memory, evaluation/refinement counts, failures, and whole-transport time. With original geometry fraction <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math> and geometry speedup <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>g</mi></msub><annotation encoding="application/x-tex">S_g</annotation></semantics></math>,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mrow><mi>t</mi><mi>o</mi><mi>t</mi><mi>a</mi><mi>l</mi></mrow></msub><mo>≤</mo><mo stretchy="false" form="prefix">[</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>f</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi>f</mi><mi>/</mi><msub><mi>S</mi><mi>g</mi></msub><msup><mo stretchy="false" form="postfix">]</mo><mrow><mo>−</mo><mn>1</mn></mrow></msup></mrow><annotation encoding="application/x-tex">S_{total}\le[(1-f)+f/S_g]^{-1}</annotation></semantics></math></p>
+
+<p>when added costs are ignored. Explicit segmentation and repeated online segmentation amortize differently.</p>
+
+<h2 id="section-7">7. Historical remote-code observations</h2>
+
+<p>The original analysis inspected <code>the CORE-MOC working copy</code> read-only on November 10, 2026, at commit <code>dd80c1d5f182730f56511846ead51c0f2d90f678</code>. It did not compile, run, modify, or fully audit that repository. These observations are historical and do not identify the bundled OpenMOC snapshot as the same codebase.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Historical location</th>
+<th>Observation and implication</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>src/Surface.h:149,160,164,409</code></td>
+<td>Virtual <code>evaluate</code>, <code>intersection</code>, <code>getMinDistance</code>; default two-hit storage needs reconsideration for complex surfaces with many roots</td>
+</tr>
+<tr>
+<td><code>src/Region.cpp:1065,1079</code></td>
+<td>Halfspace sign tests and Surface delegation provide a possible integration point</td>
+</tr>
+<tr>
+<td><code>src/Region.cpp:669,739</code></td>
+<td>Intersection/union containment short-circuits</td>
+</tr>
+<tr>
+<td><code>src/Geometry.cpp:2642,2685,2724,2807</code></td>
+<td>Hierarchical location and <code>TINY_MOVE</code> require coordinated tolerances</td>
+</tr>
+<tr>
+<td><code>src/Geometry.cpp:4461,4537,4617</code></td>
+<td>
+<code>segmentize3D</code> couples next points with FSR data</td>
+</tr>
+<tr>
+<td><code>src/TrackGenerator.cpp:1742</code></td>
+<td>Segment errors propagate into FSR volumes/centroids</td>
+</tr>
+<tr>
+<td><code>src/TrackGenerator3D.cpp:330,344,1348</code></td>
+<td>Explicit 3D differs from extruded OTF paths</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Targeted searches found no matching SDF filenames or <code>SDFSurface</code>, <code>SDFCell</code>, or <code>SDFfunctor</code> symbols in <code>src</code>. Other names, branches, or external implementations remain possible. A candidate contract distinguishes signed evaluation, bounded safe distance, nearest valid positive event, and normals/error states. Begin with explicit 3D segments; separately investigate continuously deformed on-demand tracking.</p>
+
+<h2 id="section-8">8. Validation and defensible contributions</h2>
+
+<p>Use three levels: geometry queries with analytic/adversarial references; full track/FSR sequences with independent volume integration; transport responses and total cost with converged CSG or CAD/mesh references. Scan representation error, intersection tolerance, source resolution, and track/angular resolution separately. Report MC statistics, nuclear-data differences, and mesh convergence.</p>
+
+<p>Keep interior/surface origins, thin layers/gaps, tangencies/contacts/coincidence, strong twists/bends, competing parent/lattice events, and repeated multithreaded runs. Acceptance values must follow cross sections, minimum features, error budgets, and reference accuracy.</p>
+
+<p>Potential contributions are verifiable complex implicit expressions with bounds, complete multi-material/FSR segmentation, and practical hybrid CSG queries measured at equal physical accuracy. Algorithms, error analysis, and reproducible evidence must support these claims.</p>
+
+<h2 id="section-9">9. Primary references</h2>
+
+<ul>
+<li>
+<strong>R1:</strong> Shriwise et al., M&amp;C 2017, <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">conference paper</a>. Nuclear prefiltering, bounds, fallback, conditional performance.</li>
+<li>
+<strong>R2:</strong> Shriwise et al., NET 49(6):1189–1198 (2017), <a href="https://doi.org/10.1016/j.net.2017.08.008">journal DOI</a>. Related journal publication.</li>
+<li>
+<strong>R3:</strong> de Lambert et al., ANE 134:330–341 (2019), <a href="https://doi.org/10.1016/j.anucene.2019.06.017">DOI</a>. Bowing approximations.</li>
+<li>
+<strong>R4:</strong> Zou et al., ANE 169:108892 (2022), <a href="https://doi.org/10.1016/j.anucene.2021.108892">DOI</a>. ALPHA deformation and MOC-EX.</li>
+<li>
+<strong>R5:</strong> Li et al., NED 433:113884 (2025), <a href="https://doi.org/10.1016/j.nucengdes.2025.113884">DOI</a>. Helical equivalent models.</li>
+<li>
+<strong>R6:</strong> Song et al., PNE 180:105607 (2025), <a href="https://doi.org/10.1016/j.pnucene.2025.105607">DOI</a>. MC/MOC helical-fuel calculation.</li>
+<li>
+<strong>R7:</strong> Chen et al., Chinese Physics C 38(5):058201 (2014), <a href="https://doi.org/10.1088/1674-1137/38/5/058201">DOI</a>. Earlier CAD-MOC/SuperMC.</li>
+<li>
+<strong>R8:</strong> <a href="https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html">OpenMOC characteristic equations</a>.</li>
+<li>
+<strong>R9:</strong> <a href="https://docs.openmc.org/en/stable/methods/geometry.html">OpenMC geometry methods</a>.</li>
+<li>
+<strong>R10:</strong> Hart, The Visual Computer 12(10):527–545 (1996), <a href="https://doi.org/10.1007/s003710050084">DOI</a>. Sphere tracing.</li>
+<li>
+<strong>R11:</strong> Galin et al., CGF 39(2):545–554 (2020), <a href="https://doi.org/10.1111/cgf.13951">DOI</a>. Local Lipschitz segment tracing.</li>
+<li>
+<strong>R12:</strong> Hansson-Soderlund et al., JCGT 11(3):94–113 (2022), <a href="https://jcgt.org/published/0011/03/06/">paper page</a>. Grid intersections.</li>
+<li>
+<strong>R13:</strong> Green, <a href="https://steamcdn-a.akamaihd.net/apps/valve/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf">SIGGRAPH 2007 paper</a>. Font-reference date correction.</li>
+<li>
+<strong>R14:</strong> NVIDIA, <a href="https://developer.nvidia.com/blog/how-to-get-started-with-optix-7/">OptiX 7 introduction</a>. Traversal versus custom intersection.</li>
+</ul>
+
+<p>The original review used only public abstracts/visible methods for some paywalled R3–R6 papers. It did not independently validate all their numerical results.</p>
+
+    </main>
+  </body>
+</html>

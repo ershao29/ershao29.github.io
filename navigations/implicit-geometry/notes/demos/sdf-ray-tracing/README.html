@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDF-Grid Ray Tracing Teaching Demo | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>SDF-Grid Ray Tracing Teaching Demo</h1>
+        <a href="../../../labs/sdf-ray-tracing.html">实验导航、源码与下载</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Outputs</a></li>
+  <li><a href="#section-2">Interfaces and semantics</a></li>
+  <li><a href="#section-3">Implementation scope and validation</a></li>
+</ul>
+</details>
+<p>An independent CPU companion to Hansson-Soderlund, Evans, and Akenine-Moller, JCGT 2022. Read the <a href="../../literature/notes/ray-tracing-sdf-grids.html">English paper summary</a>.</p>
+
+<p>Requires Python 3.9+ standard libraries, with no GPU or third-party packages. From the workspace root:</p>
+
+<pre><code class="language-bash">cd summary/demos/sdf-ray-tracing
+python3 -m unittest -v
+python3 demo.py --grid 16 --size 192 --rays 1000
+python3 demo.py --quantize --output output-quantized --grid 16 --size 112 --rays 500
+</code></pre>
+
+<p>Runs overwrite matching files in the selected output directory. Default output is script-relative; explicit <code>--output</code> is relative to the current directory. <code>--grid</code> is voxels per axis and must be a power of two at least 2; <code>--size</code> is image width/height; <code>--rays</code> controls benchmark rays.</p>
+
+<h2 id="section-1">Outputs</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Files</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>analytic.png</code>, <code>tetra.png</code>, <code>smooth.png</code>
+</td>
+<td>Three normal constructions on the same hit geometry</td>
+</tr>
+<tr>
+<td>
+<code>comparison.png</code>, <code>comparison.svg</code>
+</td>
+<td>Side-by-side shading</td>
+</tr>
+<tr>
+<td><code>cubic.svg</code></td>
+<td>Multiple roots with same-sign endpoints</td>
+</tr>
+<tr>
+<td><code>normal-continuity.svg</code></td>
+<td>Normal components along a sphere section</td>
+</tr>
+<tr>
+<td>
+<code>benchmark.csv</code>, <code>metrics.json</code>
+</td>
+<td>17 traversal/solver combinations, counters, timings, shadows</td>
+</tr>
+<tr>
+<td><code>run-report.md</code></td>
+<td>Readable results</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Archived reports: <a href="output/run-report.html">unquantized</a>, <a href="output-quantized/run-report.html">shared-node snorm8 quantization</a>.</p>
+
+<p><img src="../../../resources/sdf-ray-tracing/output/comparison.png" alt="Analytic, finite-difference, and continuous normals" loading="lazy"></p>
+
+<h2 id="section-2">Interfaces and semantics</h2>
+
+<p><a href="../../../code/sdf-ray-tracing/sdf_grid.html">sdf_grid.py</a> provides <code>trilinear</code>, <code>gradient</code>, optimized <code>cubic_coefficients</code>, <code>first_root</code>, <code>Grid.trace</code>, <code>Grid.normal</code>, and <code>Stats</code>. The coefficient polynomial is <strong>-F</strong>; field signs and geometric normals use F.</p>
+
+<pre><code class="language-python">from sdf_grid import Grid, scene_sdf, unit
+
+grid = Grid(16, scene_sdf)
+hit = grid.trace((2.5, 1.7, 3.8), unit((-2.5, -1.7, -3.8)),
+                 traversal="SVS", solver="A")
+print(hit)
+</code></pre>
+
+<p><code>Hit.t</code> uses the caller's ray parameter and equals physical length only for a unit direction. Local voxel transformations preserve that parameter.</p>
+
+<p><code>any_hit=True</code> only answers Boolean occlusion on a finite segment. Its returned <code>Hit.t</code> may be a root-bracket endpoint and must not define a physical hit point or length. Pass the upper query bound through <code>far</code>.</p>
+
+<h2 id="section-3">Implementation scope and validation</h2>
+
+<p>Includes trilinear intersections, optimized cubics, derivative partitioning, continuous dual-voxel normals, opaque-shadow early exits, software BVH, brick DDA, and octree traversal. M/NR add bracket/bisection protection. GST uses a dense global Lipschitz bound; ST uses a directional derivative bound. Shared nodes plus halo replace per-voxel GPU redundancy. Quantization uses shared snorm8 nodes.</p>
+
+<p>There is no DXR/RTX, HLSL gather, original asset set, multibounce path tracer, BC4, or 2023 tight-box extension. CPU timing is educational and does not establish GPU rankings.</p>
+
+<p>The 12 existing tests cover polynomial roots, repeated/degenerate roots, direct interpolation, finite-difference gradients, traversal agreement, corners/parallel rays, interior starts, anisotropic voxels, normal continuity, quantized shared faces, and clipped shadows. DDA+A on the same trilinear field is the benchmark reference. ST/GST have finite budgets and approximation thresholds; <code>exhausted</code> counts local/traversal exhaustion events rather than unique rays. Double precision and heuristic tolerances do not constitute a certified industrial geometry kernel.</p>
+
+    </main>
+  </body>
+</html>

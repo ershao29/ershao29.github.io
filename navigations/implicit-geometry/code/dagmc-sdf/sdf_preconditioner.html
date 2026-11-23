@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sdf_preconditioner.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>sdf_preconditioner.py</h1>
+        <a href="../../labs/dagmc-sdf.html">dagmc-sdf 实验导航</a> · <a href="../../downloads/dagmc-sdf.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>"""Teaching implementation of the M&amp;C 2017 DAGMC distance-field prefilter.
+
+Standard library only. Distances are positive INSIDE a closed volume.
+This is not DAGMC/MOAB and not a production geometry kernel.
+"""
+from array import array
+from dataclasses import dataclass, asdict
+import heapq
+import math
+import random
+import sys
+
+
+<span id="add">def add(a, b): return tuple(a[i] + b[i] for i in range(3))</span>
+<span id="sub">def sub(a, b): return tuple(a[i] - b[i] for i in range(3))</span>
+<span id="mul">def mul(a, s): return tuple(x * s for x in a)</span>
+<span id="dot">def dot(a, b): return sum(a[i] * b[i] for i in range(3))</span>
+<span id="norm">def norm(a): return math.sqrt(dot(a, a))</span>
+<span id="cross">def cross(a, b):</span>
+    return (a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2],
+            a[0]*b[1]-a[1]*b[0])
+
+
+<span id="unit">def unit(a):</span>
+    n = norm(a)
+    if n == 0:
+        raise ValueError("zero direction")
+    return mul(a, 1/n)
+
+
+<span id="isotropic">def isotropic(rng):</span>
+    z = rng.uniform(-1, 1)
+    a = rng.uniform(0, 2*math.pi)
+    r = math.sqrt(max(0.0, 1-z*z))
+    return (r*math.cos(a), r*math.sin(a), z)
+
+
+<span id="uniform_ball">def uniform_ball(rng, radius):</span>
+    return mul(isotropic(rng), radius*rng.random()**(1/3))
+
+
+@dataclass
+<span id="KernelCounts">class KernelCounts:</span>
+    ray_calls: int = 0
+    nearest_calls: int = 0
+    box_tests: int = 0
+    triangle_tests: int = 0
+    sign_fallbacks: int = 0
+
+    def snapshot(self): return asdict(self)
+
+
+@dataclass
+<span id="Closest">class Closest:</span>
+    distance: float
+    point: tuple
+    normal: tuple
+
+
+<span id="Sphere">class Sphere:</span>
+    def __init__(self, radius=10.0):
+        if not math.isfinite(radius) or radius &lt;= 0:
+            raise ValueError("positive finite radius required")
+        self.radius = radius
+        self.bounds = ((-radius,)*3, (radius,)*3)
+        self.counts = KernelCounts()
+
+    def contains(self, p): return norm(p) &lt;= self.radius
+    def value(self, p): return self.radius-norm(p)
+
+    def closest(self, p):
+        self.counts.nearest_calls += 1
+        n = unit(p) if norm(p) else (1., 0., 0.)
+        return Closest(abs(self.value(p)), mul(n, self.radius), n)
+
+    def inside_distance(self, p):
+        self.counts.nearest_calls += 1
+        return self.value(p)
+
+    def first_hit(self, p, direction, tmax=math.inf):
+        """First strictly positive root; direction must have unit length."""
+        self.counts.ray_calls += 1
+        return first_sphere_root(p, direction, self.radius, tmax)
+
+
+<span id="first_sphere_root">def first_sphere_root(p, u, radius, tmax=math.inf):</span>
+    b = dot(p, u)
+    c = dot(p, p)-radius*radius
+    discr = b*b-c
+    if discr &lt; 0:
+        return None
+    s = math.sqrt(max(0., discr))
+    # Stable quadratic roots for t^2 + 2bt + c = 0.
+    q = -b-math.copysign(s, b)
+    roots = (q, c/q) if q else (-b,)
+    valid = [t for t in roots if t &gt; 1e-11 and t &lt;= tmax]
+    return min(valid) if valid else None
+
+
+<span id="SphericalShell">class SphericalShell(Sphere):</span>
+    """One connected, nonconvex volume with an excluded spherical cavity."""
+    def __init__(self, inner=3., outer=10.):
+        super().__init__(outer)
+        if not 0 &lt; inner &lt; outer:
+            raise ValueError("0 &lt; inner &lt; outer required")
+        self.inner = inner
+
+    def value(self, p):
+        r = norm(p)
+        return min(r-self.inner, self.radius-r)
+
+    def contains(self, p): return self.inner &lt;= norm(p) &lt;= self.radius
+
+    def closest(self, p):
+        self.counts.nearest_calls += 1
+        r = norm(p)
+        n = unit(p) if r else (1., 0., 0.)
+        inner = abs(r-self.inner) &lt; abs(r-self.radius)
+        rad = self.inner if inner else self.radius
+        return Closest(abs(r-rad), mul(n, rad), mul(n, -1) if inner else n)
+
+    def first_hit(self, p, direction, tmax=math.inf):
+        self.counts.ray_calls += 1
+        hits = [first_sphere_root(p, direction, r, tmax)
+                for r in (self.inner, self.radius)]
+        return min((t for t in hits if t is not None), default=None)
+
+
+<span id="segment_closest">def segment_closest(p, a, b):</span>
+    ab = sub(b, a)
+    den = dot(ab, ab)
+    t = min(1., max(0., dot(sub(p, a), ab)/den)) if den else 0.
+    return add(a, mul(ab, t))
+
+
+<span id="triangle_closest">def triangle_closest(p, triangle):</span>
+    """Projection onto the face, otherwise the nearest of its three edges."""
+    a, b, c = triangle
+    ab, ac = sub(b, a), sub(c, a)
+    n = cross(ab, ac)
+    nn = dot(n, n)
+    if nn:
+        q = sub(p, mul(n, dot(sub(p, a), n)/nn))
+        if all(dot(cross(sub(y, x), sub(q, x)), n) &gt;= 0
+               for x, y in ((a, b), (b, c), (c, a))):
+            return q
+    qs = [segment_closest(p, x, y) for x, y in ((a, b), (b, c), (c, a))]
+    return min(qs, key=lambda q: dot(sub(p, q), sub(p, q)))
+
+
+<span id="triangle_ray">def triangle_ray(p, u, triangle):</span>
+    """Double-sided Moller-Trumbore test, positive physical distance only."""
+    a, b, c = triangle
+    e1, e2 = sub(b, a), sub(c, a)
+    h = cross(u, e2)
+    det = dot(e1, h)
+    if abs(det) &lt;= 1e-13*norm(e1)*norm(e2):
+        return None
+    s = sub(p, a)
+    v = dot(s, h)/det
+    if v &lt; -1e-12 or v &gt; 1+1e-12:
+        return None
+    q = cross(s, e1)
+    w = dot(u, q)/det
+    if w &lt; -1e-12 or v+w &gt; 1+1e-12:
+        return None
+    t = dot(e2, q)/det
+    return t if t &gt; 1e-11 else None
+
+
+<span id="box_distance2">def box_distance2(p, bounds):</span>
+    lo, hi = bounds
+    return sum(max(lo[i]-p[i], 0., p[i]-hi[i])**2 for i in range(3))
+
+
+<span id="box_ray">def box_ray(p, u, bounds, tmax):</span>
+    near, far = 0., tmax
+    for i in range(3):
+        if abs(u[i]) &lt; 1e-30:
+            if p[i] &lt; bounds[0][i] or p[i] &gt; bounds[1][i]:
+                return None
+        else:
+            a = (bounds[0][i]-p[i])/u[i]
+            b = (bounds[1][i]-p[i])/u[i]
+            near, far = max(near, min(a, b)), min(far, max(a, b))
+            if near &gt; far:
+                return None
+    return near
+
+
+@dataclass
+<span id="Node">class Node:</span>
+    bounds: tuple
+    children: tuple = ()
+    faces: tuple = ()
+
+
+<span id="TriangleMesh">class TriangleMesh:</span>
+    """Closed, consistently oriented triangle surface and an AABB BVH.
+
+    AABB replaces the paper's OBB for a small dependency-free implementation.
+    Tolerance-based ray parity is educational, not a certified CAD predicate.
+    """
+    def __init__(self, triangles, leaf_size=6):
+        self.triangles = list(triangles)
+        if not self.triangles:
+            raise ValueError("nonempty mesh required")
+        self.normals = []
+        for a, b, c in self.triangles:
+            self.normals.append(unit(cross(sub(b, a), sub(c, a))))
+        self.nodes = []
+        self.counts = KernelCounts()
+        self._build(tuple(range(len(self.triangles))), leaf_size)
+        self.bounds = self.nodes[0].bounds
+
+    def _build(self, faces, leaf):
+        points = [v for k in faces for v in self.triangles[k]]
+        bounds = (tuple(min(p[i] for p in points) for i in range(3)),
+                  tuple(max(p[i] for p in points) for i in range(3)))
+        index = len(self.nodes)
+        self.nodes.append(Node(bounds))
+        if len(faces) &lt;= leaf:
+            self.nodes[index].faces = faces
+        else:
+            axis = max(range(3), key=lambda i: bounds[1][i]-bounds[0][i])
+            order = sorted(faces, key=lambda k: sum(p[axis] for p in self.triangles[k]))
+            mid = len(order)//2
+            children = (self._build(tuple(order[:mid]), leaf),
+                        self._build(tuple(order[mid:]), leaf))
+            self.nodes[index].children = children
+        return index
+
+    def closest(self, p):
+        self.counts.nearest_calls += 1
+        best, best_q, best_k = math.inf, None, None
+        queue = [(0., 0)]
+        while queue:
+            lower, k = heapq.heappop(queue)
+            if lower &gt; best:
+                continue
+            node = self.nodes[k]
+            for face in node.faces:
+                self.counts.triangle_tests += 1
+                q = triangle_closest(p, self.triangles[face])
+                d2 = dot(sub(p, q), sub(p, q))
+                if d2 &lt; best:
+                    best, best_q, best_k = d2, q, face
+            for child in node.children:
+                self.counts.box_tests += 1
+                d2 = box_distance2(p, self.nodes[child].bounds)
+                if d2 &lt;= best:
+                    heapq.heappush(queue, (d2, child))
+        return Closest(math.sqrt(best), best_q, self.normals[best_k])
+
+    def first_hit(self, p, direction, tmax=math.inf):
+        self.counts.ray_calls += 1
+        best, found = tmax, False
+        queue = [(0., 0)]
+        while queue:
+            near, k = heapq.heappop(queue)
+            if near &gt; best:
+                continue
+            node = self.nodes[k]
+            for face in node.faces:
+                self.counts.triangle_tests += 1
+                t = triangle_ray(p, direction, self.triangles[face])
+                if t is not None and t &lt;= best:
+                    best, found = t, True
+            for child in node.children:
+                self.counts.box_tests += 1
+                t = box_ray(p, direction, self.nodes[child].bounds, best)
+                if t is not None:
+                    heapq.heappush(queue, (t, child))
+        return best if found else None
+
+    def contains(self, p):
+        """Odd/even reference query. Duplicate triangle-edge hits are merged."""
+        u = unit((1., .3713906763541037, .5291502622129182))
+        hits = []
+        self.counts.ray_calls += 1
+        for tri in self.triangles:
+            self.counts.triangle_tests += 1
+            t = triangle_ray(p, u, tri)
+            if t is not None:
+                hits.append(t)
+        unique = []
+        for t in sorted(hits):
+            if not unique or abs(t-unique[-1]) &gt; 1e-9*max(1., abs(t)):
+                unique.append(t)
+        return bool(len(unique) % 2)
+
+    def inside_distance(self, p):
+        c = self.closest(p)
+        if c.distance &lt; 1e-12:
+            return 0.
+        orientation = dot(sub(c.point, p), c.normal)
+        if abs(orientation) &lt;= 1e-12*max(1., c.distance):
+            self.counts.sign_fallbacks += 1
+            inside = self.contains(p)
+        else:
+            inside = orientation &gt; 0
+        return c.distance if inside else -c.distance
+
+
+<span id="box_triangles">def box_triangles(half=1.):</span>
+    vertices = [(x*half, y*half, z*half)
+                for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)]
+    faces = [(0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1),
+             (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)]
+    triangles = []
+    for a, b, c, d in faces:
+        for ids in ((a, b, c), (a, c, d)):
+            t = tuple(vertices[i] for i in ids)
+            if dot(cross(sub(t[1], t[0]), sub(t[2], t[0])), t[0]) &lt; 0:
+                t = (t[0], t[2], t[1])
+            triangles.append(t)
+    return triangles
+
+
+<span id="hollow_box">def hollow_box(outer=3., inner=1.):</span>
+    if not 0 &lt; inner &lt; outer:
+        raise ValueError("0 &lt; inner &lt; outer required")
+    return TriangleMesh(box_triangles(outer) +
+                        [(a, c, b) for a, b, c in box_triangles(inner)])
+
+
+<span id="octasphere">def octasphere(radius=10., subdivisions=2):</span>
+    v = [(1., 0., 0.), (-1., 0., 0.), (0., 1., 0.),
+         (0., -1., 0.), (0., 0., 1.), (0., 0., -1.)]
+    faces = [(i, j, k) for i in (0, 1) for j in (2, 3) for k in (4, 5)]
+    for _ in range(subdivisions):
+        cache, new = {}, []
+        def midpoint(a, b):
+            key = tuple(sorted((a, b)))
+            if key not in cache:
+                cache[key] = len(v)
+                v.append(unit(add(v[a], v[b])))
+            return cache[key]
+        for a, b, c in faces:
+            ab, bc, ca = midpoint(a, b), midpoint(b, c), midpoint(c, a)
+            new.extend(((a, ab, ca), (ab, b, bc), (ca, bc, c), (ab, bc, ca)))
+        faces = new
+    triangles = []
+    for ids in faces:
+        t = tuple(mul(v[i], radius) for i in ids)
+        if dot(cross(sub(t[1], t[0]), sub(t[2], t[0])), t[0]) &lt; 0:
+            t = (t[0], t[2], t[1])
+        triangles.append(t)
+    return TriangleMesh(triangles)
+
+
+@dataclass
+<span id="Sample">class Sample:</span>
+    value: float
+    error: float
+
+    @property
+    def lower(self): return self.value-self.error
+    @property
+    def upper(self): return self.value+self.error
+
+
+<span id="UniformGrid">class UniformGrid:</span>
+    def __init__(self, bounds, cells, values, node_error=0.):
+        self.bounds = tuple(tuple(x) for x in bounds)
+        self.cells = (cells,)*3 if isinstance(cells, int) else tuple(cells)
+        if len(self.cells) != 3 or any(not isinstance(n, int) or n &lt; 1 for n in self.cells):
+            raise ValueError("three positive integer cell counts required")
+        self.h = tuple((self.bounds[1][i]-self.bounds[0][i])/self.cells[i]
+                       for i in range(3))
+        if any(not math.isfinite(h) or h &lt;= 0 for h in self.h):
+            raise ValueError("positive finite grid widths required")
+        if not math.isfinite(node_error) or node_error &lt; 0:
+            raise ValueError("nonnegative finite node error required")
+        self.node_error = node_error
+        self.values = array('d', values)
+        if len(self.values) != math.prod(n+1 for n in self.cells):
+            raise ValueError("wrong number of vertex values")
+        if not all(math.isfinite(v) for v in self.values):
+            raise ValueError("finite node values required")
+        self.diagonal = math.sqrt(sum(h*h for h in self.h))
+        self.scale = max(1., self.diagonal,
+                         *(abs(x) for b in bounds for x in b))
+
+    def index(self, i, j, k):
+        return (i*(self.cells[1]+1)+j)*(self.cells[2]+1)+k
+
+    @classmethod
+    def build(cls, bounds, cells, distance, node_error=0.):
+        ns = (cells,)*3 if isinstance(cells, int) else tuple(cells)
+        if len(ns) != 3 or any(not isinstance(n, int) or n &lt; 1 for n in ns):
+            raise ValueError("positive integer cell counts required")
+        values = []
+        for i in range(ns[0]+1):
+            for j in range(ns[1]+1):
+                for k in range(ns[2]+1):
+                    p = tuple(bounds[0][a]+(bounds[1][a]-bounds[0][a])*t/ns[a]
+                              for a, t in enumerate((i, j, k)))
+                    values.append(distance(p))
+        return cls(bounds, ns, values, node_error)
+
+    def sample(self, p, error_mode='paper'):
+        if error_mode not in ('paper', 'rms'):
+            raise ValueError("error_mode must be paper or rms")
+        # A query outside the data domain is UNKNOWN to this prefilter.
+        if any(p[a] &lt; self.bounds[0][a] or p[a] &gt; self.bounds[1][a]
+               for a in range(3)):
+            return None
+        ts = [(p[a]-self.bounds[0][a])/self.h[a] for a in range(3)]
+        ijk = [min(self.cells[a]-1, max(0, math.floor(ts[a]))) for a in range(3)]
+        uvw = [min(1., max(0., ts[a]-ijk[a])) for a in range(3)]
+        value = 0.
+        for i in (0, 1):
+            wi = uvw[0] if i else 1-uvw[0]
+            for j in (0, 1):
+                wj = uvw[1] if j else 1-uvw[1]
+                for k in (0, 1):
+                    wk = uvw[2] if k else 1-uvw[2]
+                    value += wi*wj*wk*self.values[self.index(ijk[0]+i, ijk[1]+j, ijk[2]+k)]
+        if error_mode == 'paper':
+            error = self.diagonal
+        else:
+            # Teaching extension, not the paper's diagonal estimate.
+            error = math.sqrt(sum(h*h*t*(1-t) for h, t in zip(self.h, uvw)))
+        fp_guard = 32*sys.float_info.epsilon*(self.scale+abs(value))
+        return Sample(value, error+self.node_error+fp_guard)
+
+    @property
+    def value_bytes(self): return len(self.values)*self.values.itemsize
+
+
+@dataclass
+<span id="QueryCounts">class QueryCounts:</span>
+    events: int = 0
+    skipped_rays: int = 0
+    field_lookups: int = 0
+    containment_fallbacks: int = 0
+    distance_fallbacks: int = 0
+
+
+@dataclass
+<span id="DistanceAnswer">class DistanceAnswer:</span>
+    value: float
+    exact: bool
+    used_field: bool
+
+
+<span id="Prefilter">class Prefilter:</span>
+    def __init__(self, kernel, grid, error_mode='paper'):
+        self.kernel, self.grid, self.error_mode = kernel, grid, error_mode
+        self.counts = QueryCounts()
+
+    def sample(self, p):
+        self.counts.field_lookups += 1
+        return self.grid.sample(p, self.error_mode)
+
+    def contains(self, p):
+        sample = self.sample(p)
+        if sample is not None:
+            if sample.lower &gt; 0:
+                return True
+            if sample.upper &lt; 0:
+                return False
+        self.counts.containment_fallbacks += 1
+        return self.kernel.contains(p)
+
+    def safety_distance(self, p, require_exact=False):
+        """Known-interior caller: lower bound is only returned when allowed."""
+        if not require_exact:
+            sample = self.sample(p)
+            if sample is not None and sample.lower &gt; 0:
+                return DistanceAnswer(sample.lower, False, True)
+        self.counts.distance_fallbacks += 1
+        return DistanceAnswer(self.kernel.closest(p).distance, True, False)
+
+    def certifies_no_crossing(self, p, q, mode='pair'):
+        if mode not in ('single', 'pair'):
+            raise ValueError("mode must be single or pair")
+        a = self.sample(p)
+        if a is None:
+            return False
+        length = norm(sub(q, p))
+        guard = 1e-12*max(self.grid.scale, length)
+        if mode == 'single':
+            return a.lower &gt; length+guard
+        b = self.sample(q)
+        return b is not None and a.lower+b.lower &gt; length+guard
+
+    def next_event(self, p, direction, distance, mode='pair'):
+        if mode not in ('baseline', 'single', 'pair'):
+            raise ValueError("unknown event mode")
+        if distance &lt; 0 or not math.isfinite(distance):
+            raise ValueError("finite nonnegative event distance required")
+        if abs(norm(direction)-1) &gt; 1e-10:
+            raise ValueError("direction must be normalized")
+        self.counts.events += 1
+        q = add(p, mul(direction, distance))
+        if mode != 'baseline' and self.certifies_no_crossing(p, q, mode):
+            self.counts.skipped_rays += 1
+            return None
+        return self.kernel.first_hit(p, direction, distance)
+
+
+<span id="fixed_utilization">def fixed_utilization(distance, radius):</span>
+    if radius &lt;= 0 or distance &lt; 0:
+        raise ValueError("radius &gt; 0 and distance &gt;= 0 required")
+    x = distance/radius
+    return (1-x)*(1-.5*x) if x &lt; 1 else 0.
+
+
+<span id="exponential_utilization">def exponential_utilization(mean_free_path, radius):</span>
+    """Uniform starting point, isotropic direction, independent exponential D.
+
+    Integral of exp(-d/lambda)/lambda times fixed_utilization(d, R).
+    Stable power series is used for lambda &gt;&gt; R.
+    """
+    if mean_free_path &lt;= 0 or radius &lt;= 0:
+        raise ValueError("positive mean free path and radius required")
+    b = radius/mean_free_path
+    if b &lt; .5:
+        # Integral x^k*(1-1.5x+0.5x^2), x from 0 to 1.
+        total, coefficient = 0., b
+        for k in range(60):
+            moment = (k+5)/(2*(k+1)*(k+2)*(k+3))
+            term = coefficient*moment
+            total += term
+            if k &gt; 5 and abs(term) &lt; 1e-17*max(1e-300, abs(total)):
+                break
+            coefficient *= -b/(k+1)
+        return total
+    a = mean_free_path/radius
+    return 1-1.5*a+a*a+(.5*a-a*a)*math.exp(-b)
+
+
+<span id="alpha_min">def alpha_min(r, distance, radius):</span>
+    """Safe piecewise form of conference eqs. (18)-(19)."""
+    if not (0 &lt;= r &lt;= radius) or distance &lt; 0:
+        raise ValueError("invalid radius or distance")
+    if distance &gt;= radius:
+        return math.pi
+    if distance &lt; radius-r:
+        return 0.
+    if r == 0 or distance == 0:
+        return 0.
+    c = ((2*radius-r-distance)**2-distance**2-r**2)/(2*distance*r)
+    return math.acos(max(-1., min(1., c)))
+
+
+<span id="simulate_walk">def simulate_walk(kernel, grid, mean_free_path, histories=200, seed=91,</span>
+                  mode='pair', error_mode='paper', max_collisions=500):
+    """Absorbing boundary and isotropic collisions, no energy/material physics.
+
+    Counts boundary escape and collision-cap termination separately. Uniform
+    source is used, but later collision positions are not uniform samples.
+    """
+    if mean_free_path &lt;= 0 or histories &lt; 1 or max_collisions &lt; 1:
+        raise ValueError("positive simulation parameters required")
+    rng = random.Random(seed)
+    query = Prefilter(kernel, grid, error_mode)
+    traces, collisions, escapes, capped = [], 0, 0, 0
+    total_length = 0.
+    for _ in range(histories):
+        # Used here with analytic sphere/shell volumes only.
+        p = uniform_ball(rng, kernel.radius)
+        while not kernel.contains(p):
+            p = uniform_ball(rng, kernel.radius)
+        path, local = 0., 0
+        for _ in range(max_collisions):
+            direction = isotropic(rng)
+            distance = rng.expovariate(1/mean_free_path)
+            hit = query.next_event(p, direction, distance, mode)
+            if hit is not None:
+                path += hit
+                escapes += 1
+                break
+            path += distance
+            local += 1
+            p = add(p, mul(direction, distance))
+            if not kernel.contains(p):
+                raise AssertionError("unsafe skipped event or missed boundary")
+        else:
+            capped += 1
+        collisions += local
+        total_length += path
+        traces.append((local, path))
+    return dict(collisions=collisions, escapes=escapes, capped=capped,
+                track_length=total_length, histories=histories,
+                queries=asdict(query.counts), traces=traces)</code></pre>
+    </main>
+  </body>
+</html>

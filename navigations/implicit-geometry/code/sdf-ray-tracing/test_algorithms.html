@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>test_algorithms.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>test_algorithms.py</h1>
+        <a href="../../labs/sdf-ray-tracing.html">sdf-ray-tracing 实验导航</a> · <a href="../../downloads/sdf-ray-tracing.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>"""Numerical and traversal checks; run: python3 -m unittest -v."""
+import itertools
+import math
+import random
+import unittest
+
+from sdf_grid import (CORNERS, Grid, Stats, add, cubic_coefficients, dot, evaluate,
+                      first_root, gradient, mul, ray_box, scene_sdf, trilinear, unit)
+
+
+<span id="polynomial">def polynomial(roots):</span>
+    c = [1.0]
+    for root in roots:
+        result = [0.0] * (len(c) + 1)
+        for i, value in enumerate(c):
+            result[i] -= root * value
+            result[i + 1] += value
+        c = result
+    return tuple(c + [0.0] * (4 - len(c)))
+
+
+<span id="PolynomialTests">class PolynomialTests(unittest.TestCase):</span>
+    def test_coefficients_against_direct_trilinear(self):
+        rng = random.Random(2022)
+        for _ in range(200):
+            s = {b: rng.uniform(-3, 3) for b in CORNERS}
+            o = tuple(rng.random() for _ in range(3))
+            d = tuple(rng.uniform(-2, 2) for _ in range(3))
+            c = cubic_coefficients(s, o, d)
+            for t in (0, 0.03, 0.25, 0.7, 1.0):
+                self.assertAlmostEqual(evaluate(c, t), -trilinear(s, add(o, mul(d, t))), places=11)
+
+    def test_gradients_against_finite_difference(self):
+        rng = random.Random(5)
+        for _ in range(60):
+            s = {b: rng.uniform(-1, 1) for b in CORNERS}
+            p = tuple(rng.uniform(-0.5, 1.5) for _ in range(3))
+            analytic = gradient(s, p)
+            for a in range(3):
+                v = tuple(1e-5 if a == b else 0 for b in range(3))
+                fd = (trilinear(s, add(p, v)) - trilinear(s, add(p, mul(v, -1)))) / 2e-5
+                self.assertAlmostEqual(analytic[a], fd, places=8)
+
+    def test_first_root_and_degenerate_cases(self):
+        cases = [((0.2, 0.4, 0.7), 0.2), ((0.2, 0.4, 1.4), 0.2),
+                 ((0.3, 0.3, 1.4), 0.3), ((0.4, 0.4, 0.4), 0.4),
+                 ((-1.0, 0.6, 1.3), 0.6), ((-1.0, 1.2, 1.3), None),
+                 ((0.0, 0.4, 0.8), 0.0), ((1.0,), 1.0), ((0.25,), 0.25),
+                 ((0.7, 0.8), 0.7)]
+        for roots, expected in cases:
+            for method in ("A", "M", "NR"):
+                for factor in (1e-18, 1, 1e18):
+                    c = tuple(x * factor for x in polynomial(roots))
+                    with self.subTest(roots=roots, method=method, factor=factor):
+                        actual = first_root(c, 1, method)
+                        if expected is None:
+                            self.assertIsNone(actual)
+                        else:
+                            self.assertIsNotNone(actual)
+                            self.assertAlmostEqual(actual, expected, delta=2e-7)
+        for method in ("A", "M", "NR"):
+            self.assertIsNone(first_root((2, 0, 0, 0), 1, method))
+            self.assertEqual(first_root((0, 0, 0, 0), 1, method), 0)
+            self.assertEqual(first_root((0, 1, 0, 0), 0, method), 0)
+
+    def test_known_random_roots_and_interval_scaling(self):
+        rng = random.Random(91)
+        for _ in range(300):
+            # separated roots: accuracy near multiple roots is tested separately
+            roots = sorted(rng.uniform(-0.7, 1.7) for _ in range(3))
+            if min(roots[i + 1] - roots[i] for i in range(2)) &lt; 0.02:
+                continue
+            expected = next((r for r in roots if 0 &lt;= r &lt;= 1), None)
+            for end in (0.002, 1.0, 700.0):
+                c = tuple(v / end ** i for i, v in enumerate(polynomial(roots)))
+                for method in ("A", "M", "NR"):
+                    actual = first_root(c, end, method)
+                    if expected is None:
+                        self.assertIsNone(actual)
+                    else:
+                        self.assertAlmostEqual(actual / end, expected, delta=1e-8)
+
+    def test_shadow_clipping_and_no_iteration(self):
+        c = polynomial((0.3, 0.5, 0.9))
+        stats = Stats()
+        self.assertIsNone(first_root(c, 0.2, "NR", True, stats))
+        self.assertIsNotNone(first_root(c, 0.4, "NR", True, stats))
+        self.assertEqual(stats.iterations, 0)
+        self.assertEqual(stats.shadow_early, 1)
+        self.assertIsNotNone(first_root(polynomial((0.3, 0.3, 1.4)), 1, "M", True))
+
+    def test_single_voxel_two_crossings_same_endpoint_sign(self):
+        s = {b: (b[0] - 0.2) * (b[1] - 0.4) * (b[2] - 1.4) for b in CORNERS}
+        c = cubic_coefficients(s, (0, 0, 0), (1, 1, 1))
+        self.assertGreater(evaluate(c, 0) * evaluate(c, 1), 0)
+        for method in ("A", "M", "NR"):
+            self.assertAlmostEqual(first_root(c, 1, method), 0.2, places=8)
+
+
+<span id="GridTests">class GridTests(unittest.TestCase):</span>
+    @classmethod
+    def setUpClass(cls):
+        cls.grid = Grid(16, scene_sdf)
+
+    def test_traversal_and_solver_agreement(self):
+        rng = random.Random(17)
+        stats = Stats()
+        for _ in range(180):
+            o = tuple(rng.uniform(-2.8, 2.8) for _ in range(3))
+            target = tuple(rng.uniform(-1.1, 1.1) for _ in range(3))
+            d = unit(add(target, mul(o, -1)))
+            reference = self.grid.trace(o, d, "DDA", "A")
+            for traversal, solver in itertools.product(("GST", "SVS", "SBS", "SVO"), ("A", "M", "NR")):
+                with self.subTest(traversal=traversal, solver=solver, o=o):
+                    hit = self.grid.trace(o, d, traversal, solver, stats=stats)
+                    self.assertEqual(hit is None, reference is None)
+                    if reference:
+                        self.assertAlmostEqual(hit.t, reference.t, delta=2e-7)
+        self.assertEqual(stats.exhausted, 0)
+
+    def test_axis_rays_faces_corners_and_inside(self):
+        for o, d in [((-3, 0, 0), (1, 0, 0)), ((3, 0, 0), (-2, 0, 0)),
+                     ((-3, -3, -3), (1, 1, 1)), ((3, 3, 3), (-1, -1, -1)),
+                     ((-0.57, 0.12, 0), (1, 0, 0)), ((0, 0, 0), (0, 0, 1))]:
+            ref = self.grid.trace(o, d, "DDA")
+            for traversal in ("SVS", "SBS", "SVO", "GST"):
+                hit = self.grid.trace(o, d, traversal)
+                self.assertEqual(hit is None, ref is None)
+                if ref:
+                    self.assertAlmostEqual(hit.t, ref.t, delta=1e-7)
+        with self.assertRaises(ValueError):
+            self.grid.trace((0, 0, 0), (0, 0, 0))
+        self.assertIsNone(ray_box((3, 0, 0), (0, 1, 0), (-1, -1, -1), (1, 1, 1)))
+
+    def test_nonuniform_voxel_transform(self):
+        g = Grid(8, lambda x, y, z: x + 2 * y - z - 0.7,
+                 lower=(-1, -2, -3), upper=(1, 2, 3))
+        o, d = (-2, 0.1, 0.2), (2, 0, 0)
+        hit = g.trace(o, d)
+        self.assertAlmostEqual(hit.t, 1.35, places=10)
+        p = add(o, mul(d, hit.t))
+        n = g.normal(p, hit.cell, "analytic")
+        expected = unit((1, 2, -1))
+        self.assertGreater(dot(n, expected), 1 - 1e-12)
+
+    def test_continuous_normal_at_voxel_face(self):
+        g = Grid(8, lambda x, y, z: math.sqrt(x * x + y * y + z * z) - 0.95)
+        x, z, lo, hi = 0.375, 0.18, 0.0, 1.2
+        for _ in range(60):
+            y = (lo + hi) / 2
+            if g.sample((x, y, z)) &lt; 0:
+                lo = y
+            else:
+                hi = y
+        jumps = {}
+        for mode in ("analytic", "smooth"):
+            p, q = (x - 1e-8, y, z), (x + 1e-8, y, z)
+            a, b = g.normal(p, g.cell_at(p), mode), g.normal(q, g.cell_at(q), mode)
+            jumps[mode] = math.dist(a, b)
+        self.assertLess(jumps["smooth"], 1e-6)
+        self.assertGreater(jumps["analytic"], 0.05)
+
+    def test_quantized_shared_faces_and_shadow_visibility(self):
+        g = Grid(8, scene_sdf, quantize=True)
+        for y, z in ((0.23, 0.4), (0.68, 0.15)):
+            left, right = g.corners((3, 2, 1)), g.corners((4, 2, 1))
+            self.assertAlmostEqual(trilinear(left, (1, y, z)), trilinear(right, (0, y, z)), places=14)
+        rng = random.Random(55)
+        for _ in range(70):
+            o = tuple(rng.uniform(-2, 2) for _ in range(3))
+            d = unit(tuple(rng.uniform(-1, 1) for _ in range(3)))
+            far = rng.uniform(0.1, 4)
+            for traversal in ("SVS", "SBS", "SVO", "GST"):
+                full = g.trace(o, d, traversal, "NR", far=far)
+                fast = g.trace(o, d, traversal, "NR", far=far, any_hit=True)
+                self.assertEqual(full is None, fast is None)
+
+    def test_empty_and_zero_fields(self):
+        for value in (0.0, 1.0, -1.0):
+            g = Grid(2, lambda x, y, z: value)
+            for traversal in ("SVS", "SBS", "SVO", "GST", "DDA"):
+                hit = g.trace((-3, 0.1, 0.2), (1, 0, 0), traversal)
+                self.assertEqual(hit is not None, value == 0)
+
+
+if __name__ == "__main__":
+    unittest.main()</code></pre>
+    </main>
+  </body>
+</html>

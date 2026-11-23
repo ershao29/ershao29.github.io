@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>demo.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>demo.py</h1>
+        <a href="../../labs/sdf-ray-tracing.html">sdf-ray-tracing 实验导航</a> · <a href="../../downloads/sdf-ray-tracing.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>"""Generate renders, polynomial/normal diagrams, and reproducible CPU statistics.
+
+No third-party dependencies. From this directory:
+  python3 demo.py --output output --size 192 --grid 16
+  python3 demo.py --quantize --output output-quantized
+"""
+from __future__ import annotations
+
+import argparse
+import base64
+import csv
+from dataclasses import asdict
+import json
+import math
+from pathlib import Path
+import platform
+import random
+import struct
+import time
+import zlib
+
+from sdf_grid import (Grid, Stats, add, dot, evaluate, first_root, mul, scene_sdf, unit)
+
+
+<span id="png_bytes">def png_bytes(width, height, pixels):</span>
+    def chunk(kind, data):
+        return struct.pack("!I", len(data)) + kind + data + struct.pack("!I", zlib.crc32(kind + data))
+    rows = b"".join(b"\x00" + bytes(pixels[y * width * 3:(y + 1) * width * 3]) for y in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack("!2I5B", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+<span id="camera_ray">def camera_ray(x, y, size):</span>
+    o = (2.5, 1.7, 3.8)
+    forward = unit(mul(o, -1))
+    right = unit((forward[2] * -1, 0, forward[0]))
+    up = (right[1] * forward[2] - right[2] * forward[1],
+          right[2] * forward[0] - right[0] * forward[2],
+          right[0] * forward[1] - right[1] * forward[0])
+    scale = math.tan(math.radians(33 / 2))
+    d = unit(add(forward, add(mul(right, (2 * (x + 0.5) / size - 1) * scale),
+                              mul(up, (1 - 2 * (y + 0.5) / size) * scale))))
+    return o, d
+
+
+<span id="render">def render(grid, size, out):</span>
+    hits = []
+    primary_stats = Stats()
+    start = time.perf_counter()
+    for y in range(size):
+        for x in range(size):
+            o, d = camera_ray(x, y, size)
+            hits.append((o, d, grid.trace(o, d, stats=primary_stats)))
+    timings = {"primary_seconds": time.perf_counter() - start}
+    images = []
+    shadow_stats = Stats()
+    for mode in ("analytic", "tetra", "smooth"):
+        start = time.perf_counter()
+        pixels = bytearray()
+        for index, (o, d, hit) in enumerate(hits):
+            if not hit:
+                v = 0.055 + 0.035 * (index // size) / size
+                color = (v, v * 1.18, v * 1.55)
+            else:
+                p = add(o, mul(d, hit.t))
+                n = grid.normal(p, hit.cell, mode)
+                geom = grid.normal(p, hit.cell, "analytic")
+                to_light = add((-2.5, 3.7, 3.4), mul(p, -1))
+                distance = math.sqrt(dot(to_light, to_light))
+                light = mul(to_light, 1 / distance)
+                # Bias follows the geometric normal; all three images use the same visibility.
+                side = 1 if dot(geom, light) &gt;= 0 else -1
+                origin = add(p, mul(geom, side * 2e-5))
+                blocked = grid.trace(origin, light, "SVS", "NR", near=1e-6,
+                                     far=distance - 5e-5, any_hit=True, stats=shadow_stats)
+                vis = 0.0 if blocked else 1.0
+                diffuse = max(0, dot(n, light)) * vis
+                halfway = unit(add(light, mul(d, -1)))
+                specular = max(0, dot(n, halfway)) ** 70 * vis
+                base = (0.92, 0.23, 0.055) if p[0] &lt; 0 else (0.08, 0.52, 0.75)
+                color = tuple(v * (0.15 + 0.8 * diffuse) + 0.75 * specular for v in base)
+            pixels.extend(round(255 * min(1, max(0, c)) ** (1 / 2.2)) for c in color)
+        image = png_bytes(size, size, pixels)
+        (out / f"{mode}.png").write_bytes(image)
+        images.append((mode, pixels, image))
+        timings[f"{mode}_shading_seconds"] = time.perf_counter() - start
+    combined = bytearray()
+    for y in range(size):
+        for _, pixels, _ in images:
+            combined.extend(pixels[y * size * 3:(y + 1) * size * 3])
+    (out / "comparison.png").write_bytes(png_bytes(size * 3, size, combined))
+    svg = [f'&lt;svg xmlns="http://www.w3.org/2000/svg" width="{size*3}" height="{size+40}" viewBox="0 0 {size*3} {size+40}"&gt;',
+           '&lt;rect width="100%" height="100%" fill="#121b29"/&gt;']
+    for i, (mode, _, image) in enumerate(images):
+        svg.append(f'&lt;image x="{i*size}" y="36" width="{size}" height="{size}" href="data:image/png;base64,{base64.b64encode(image).decode()}"/&gt;')
+        svg.append(f'&lt;text x="{(i+0.5)*size}" y="24" text-anchor="middle" fill="white" font-family="sans-serif" font-size="16"&gt;{mode}&lt;/text&gt;')
+    svg.append('&lt;/svg&gt;')
+    (out / "comparison.svg").write_text("\n".join(svg))
+    return {**timings, "primary": asdict(primary_stats), "all_shading_shadows": asdict(shadow_stats),
+            "primary_hits": sum(hit is not None for _, _, hit in hits)}
+
+
+<span id="chart">def chart(path, title, series, xmin, xmax, ymin, ymax, markers=(), subtitle=""):</span>
+    w, h, left, right, top, bottom = 860, 400, 72, 28, 65, 60
+    px = lambda x: left + (x - xmin) / (xmax - xmin) * (w - left - right)
+    py = lambda y: h - bottom - (y - ymin) / (ymax - ymin) * (h - top - bottom)
+    svg = [f'&lt;svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}"&gt;',
+           '&lt;rect width="100%" height="100%" fill="#f7f9fc"/&gt;',
+           f'&lt;text x="{left}" y="28" font-size="21" font-family="sans-serif" fill="#15273d"&gt;{title}&lt;/text&gt;',
+           f'&lt;text x="{left}" y="49" font-size="12" font-family="sans-serif" fill="#53657a"&gt;{subtitle}&lt;/text&gt;']
+    for i in range(6):
+        x = xmin + (xmax - xmin) * i / 5
+        y = ymin + (ymax - ymin) * i / 5
+        svg.extend([f'&lt;path d="M {px(x):.2f},{top} V {h-bottom}" stroke="#dde4ed"/&gt;',
+                    f'&lt;path d="M {left},{py(y):.2f} H {w-right}" stroke="#dde4ed"/&gt;',
+                    f'&lt;text x="{px(x):.2f}" y="{h-bottom+23}" text-anchor="middle" font-size="12" font-family="sans-serif"&gt;{x:.3g}&lt;/text&gt;',
+                    f'&lt;text x="{left-10}" y="{py(y)+4:.2f}" text-anchor="end" font-size="12" font-family="sans-serif"&gt;{y:.3g}&lt;/text&gt;'])
+    if ymin &lt;= 0 &lt;= ymax:
+        svg.append(f'&lt;path d="M {left},{py(0):.2f} H {w-right}" stroke="#64748b"/&gt;')
+    for x in markers:
+        svg.append(f'&lt;path d="M {px(x):.2f},{top} V {h-bottom}" stroke="#8c98a8" stroke-dasharray="5,5"/&gt;')
+    for i, (name, color, data) in enumerate(series):
+        points = " ".join(f"{px(x):.2f},{py(y):.2f}" for x, y in data)
+        svg.append(f'&lt;polyline points="{points}" fill="none" stroke="{color}" stroke-width="2"/&gt;')
+        svg.append(f'&lt;text x="{left+i*220}" y="{h-10}" font-size="13" font-family="sans-serif" fill="{color}"&gt;{name}&lt;/text&gt;')
+    svg.append('&lt;/svg&gt;')
+    path.write_text("\n".join(svg))
+
+
+<span id="diagrams">def diagrams(out):</span>
+    # Same endpoint signs, TWO roots in the voxel. Third root is beyond it.
+    c = (-0.112, 0.92, -2.0, 1.0)  # (t-.2)(t-.4)(t-1.4)
+    from sdf_grid import quadratic_roots
+    critical = quadratic_roots(3 * c[3], 2 * c[2], c[1])
+    chart(out / "cubic.svg", "Derivative splitting finds hidden crossings",
+          [("g(t)=(t-0.2)(t-0.4)(t-1.4)", "#007d96", [(i/400, evaluate(c, i/400)) for i in range(401)])],
+          0, 1, -0.22, 0.04, [t for t in critical if 0 &lt; t &lt; 1],
+          "g(0) and g(1) have the same sign. Dashed line: critical point. First root: t=0.2.")
+    g = Grid(8, lambda x, y, z: math.sqrt(x*x + y*y + z*z) - 0.95)
+    points = {mode: [] for mode in ("analytic", "tetra", "smooth")}
+    for i in range(601):
+        x, z = 0.01 + i / 600 * 0.82, 0.18
+        lo, hi = 0, 1.2
+        for _ in range(35):
+            y = (lo + hi) / 2
+            if g.sample((x, y, z)) &lt; 0:
+                lo = y
+            else:
+                hi = y
+        p = (x, (lo + hi)/2, z)
+        for mode in points:
+            points[mode].append((x, g.normal(p, g.cell_at(p), mode)[0]))
+    chart(out / "normal-continuity.svg", "Normal x component across a sampled sphere",
+          [(mode, color, points[mode]) for mode, color in zip(points, ("#c55724", "#8b5ca8", "#007d96"))],
+          0, 0.85, 0, 1, (0.375, 0.75),
+          "Same reconstructed surface; smooth uses the paper's dual-voxel extrapolation. Grid n=8.")
+
+
+<span id="benchmark">def benchmark(grid, count, out):</span>
+    rng = random.Random(202211)
+    rays = []
+    for _ in range(count):
+        o = tuple(rng.uniform(-2.8, 2.8) for _ in range(3))
+        target = tuple(rng.uniform(-1, 1) for _ in range(3))
+        rays.append((o, unit(add(target, mul(o, -1)))))
+    reference = [grid.trace(o, d, "DDA", "A") for o, d in rays]
+    combinations = [(t, s) for t in ("GST", "SVS", "SBS", "SVO") for s in ("ST", "A", "M", "NR")]
+    combinations.insert(0, ("GST", "GST"))
+    results = []
+    for traversal, solver in combinations:
+        stats, mismatches, errors, nhit = Stats(), 0, [], 0
+        start = time.perf_counter()
+        for (o, d), ref in zip(rays, reference):
+            hit = grid.trace(o, d, traversal, solver, stats=stats)
+            nhit += hit is not None
+            mismatches += (hit is None) != (ref is None)
+            if hit and ref:
+                errors.append(abs(hit.t - ref.t))
+        result = {"traversal": traversal, "solver": solver,
+                  "seconds": time.perf_counter() - start, "rays": count, "hits": nhit,
+                  "hit_mismatches": mismatches, "max_t_error": max(errors, default=0), **asdict(stats)}
+        results.append(result)
+    with (out / "benchmark.csv").open("w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=list(results[0]))
+        writer.writeheader()
+        writer.writerows(results)
+    # Compare exact same finite shadow segments, with and without the any-hit optimization.
+    shadows = []
+    for optimized in (False, True):
+        stats, flags = Stats(), []
+        start = time.perf_counter()
+        for o, d in rays:
+            flags.append(grid.trace(o, d, "SVS", "NR", far=1.8, any_hit=optimized, stats=stats) is not None)
+        shadows.append({"optimized": optimized, "seconds": time.perf_counter() - start,
+                        "occluded": sum(flags), **asdict(stats), "flags": flags})
+    disagreements = sum(a != b for a, b in zip(shadows[0].pop("flags"), shadows[1].pop("flags")))
+    return {"methods": results, "shadow": shadows, "shadow_disagreements": disagreements,
+            "reference": "DDA + analytic solver on the SAME trilinear grid; not the original analytic SDF"}
+
+
+<span id="main">def main():</span>
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path(__file__).resolve().parent / "output")
+    parser.add_argument("--size", type=int, default=192)
+    parser.add_argument("--grid", type=int, default=16)
+    parser.add_argument("--rays", type=int, default=1000)
+    parser.add_argument("--quantize", action="store_true")
+    args = parser.parse_args()
+    if args.size &lt; 1 or args.rays &lt; 1:
+        parser.error("--size and --rays must be positive")
+    out = args.output.resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    start = time.perf_counter()
+    grid = Grid(args.grid, scene_sdf, quantize=args.quantize)
+    metadata = {"python": platform.python_version(), "platform": platform.platform(),
+                "grid_cells_per_axis": args.grid, "image_size": args.size,
+                "quantized": args.quantize, "active_voxels": len(grid.active),
+                "total_voxels": args.grid ** 3, "bricks": len(grid.bricks),
+                "build_seconds": time.perf_counter() - start, "seed": 202211,
+                "scope": "CPU teaching demo; software BVH/octree, dense conservative GST; not GPU reproduction"}
+    print(f"Grid: {args.grid}^3 cells, {len(grid.active)} active, {len(grid.bricks)} bricks", flush=True)
+    metadata["render"] = render(grid, args.size, out)
+    print("Rendered analytic / tetrahedral / dual-voxel smooth normals.", flush=True)
+    diagrams(out)
+    metadata["benchmark"] = benchmark(grid, args.rays, out)
+    (out / "metrics.json").write_text(json.dumps(metadata, indent=2) + "\n")
+    rows = metadata["benchmark"]["methods"]
+    report = ["# CPU Demo Run Report", "", "Timings vary with machine load; these results compare correctness and do not predict GPU performance.", "",
+              f"- Grid: {args.grid}³ voxels; nonempty voxels: {len(grid.active)}; bricks: {len(grid.bricks)}.",
+              f"- Python: {platform.python_version()}; quantized: {args.quantize}; random rays: {args.rays}.", "",
+              "|Traversal|Voxel intersection|Seconds|Hit mismatches|Maximum t difference|Exhaustion count|",
+              "|---|---|---:|---:|---:|---:|"]
+    for r in rows:
+        report.append(f'|{r["traversal"]}|{r["solver"]}|{r["seconds"]:.4f}|{r["hit_mismatches"]}|{r["max_t_error"]:.3g}|{r["exhausted"]}|')
+    report.extend(["", "The reference is DDA+A on the same trilinear field. Finite ST/GST budgets and thresholds introduce approximation errors; exhausted counts individual local-solver or traversal budget limits.", "",
+                   "|Shadow optimization|Occluded rays|Root iterations|Early exits|Seconds|", "|---|---:|---:|---:|---:|"])
+    for r in metadata["benchmark"]["shadow"]:
+        report.append(f'|{r["optimized"]}|{r["occluded"]}|{r["iterations"]}|{r["shadow_early"]}|{r["seconds"]:.4f}|')
+    report.extend(["", f'Shadow Boolean mismatches: {metadata["benchmark"]["shadow_disagreements"]}.', "",
+                   "![Left: analytic; middle: tetrahedral differences; right: continuous normals](comparison.png)", "",
+                   "![Derivative partition](cubic.svg)", "", "![Normal continuity](normal-continuity.svg)", ""])
+    (out / "run-report.md").write_text("\n".join(report))
+    print(f"Wrote images, diagrams, benchmark.csv, metrics.json and run-report.md to {out}")
+
+
+if __name__ == "__main__":
+    main()</code></pre>
+    </main>
+  </body>
+</html>

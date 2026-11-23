@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signed Distance Computation on Adapted Triangulations | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Signed Distance Computation on Adapted Triangulations</h1>
+        <a href="../../../papers/adaptive-signed-distance-computation.html">中文逐章解读</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Input, output, and assumptions</a></li>
+  <li><a href="#section-2">2. Continuous propagation and characteristic update</a></li>
+  <li><a href="#section-3">3. Geometric initialization</a></li>
+  <li><a href="#section-4">4. Discrete propagation</a></li>
+  <li><a href="#section-5">5. Hessian adaptation and geometry errors</a></li>
+  <li><a href="#section-6">6. Reinitialization and Riemannian extension</a></li>
+  <li><a href="#section-7">7. Experiments, implementation route, and proposal value</a></li>
+</ul>
+</details>
+<p>English reading summary of Charles Dapogny and Pascal Frey, <em>Computation of the Signed Distance Function to a Discrete Contour on Adapted Triangulation</em>. <a href="https://www.ljll.fr/hecht/ftp/Mireille-Haddad/distance.pdf">Paper source</a>, 25 PDF pages: body pp. 1–23, references pp. 24–25. The original notes were prepared November 9, 2026; no publication year is inferred from PDF creation metadata.</p>
+
+<p>This summary retains the method, implementation requirements, and limitations from the original Chinese chapter notes. The paper computes a numerical SDF on a non-fitted simplex background mesh, combining geometric initialization, characteristic-based propagation, and Hessian-driven anisotropic adaptation.</p>
+
+<h2 id="section-1">1. Input, output, and assumptions</h2>
+
+<p>Input is a segment contour in 2D or triangle boundary in 3D, plus a background triangulation/tetrahedralization. Output is a continuous piecewise-linear nodal field. The boundary and volume meshes serve different purposes.</p>
+
+<p>Use negative inside, positive outside:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mi>Ω</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"/><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>∂</mi><mi>Ω</mi><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"/><mi>s</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mo>−</mo><mn>1</mn><mo>,</mo><mo>+</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">u_\Omega(x)=s(x)\,d(x,\partial\Omega),\qquad s\in\{-1,+1\}.</annotation></semantics></math></p>
+
+<p>The method avoids requiring a fitted background mesh or preassigned outward normals, but still assumes a meaningful bounded region. Orientability alone does not repair arbitrary open, self-intersecting, or nonmanifold triangle soups. Nested boundaries require explicit region semantics.</p>
+
+<p>Exact continuous SDFs, exact nodal samples, and numerically propagated nodal values are three distinct objects. Even exact nodal values can lose a small enclosed feature when every vertex of its containing simplex lies outside.</p>
+
+<h2 id="section-2">2. Continuous propagation and characteristic update</h2>
+
+<p>The reinitialization equation is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>u</mi><mi>t</mi></msub><mo>+</mo><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><mi>u</mi><mo stretchy="false" form="postfix">∥</mo><mo>−</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>0</mn><mo>,</mo><mspace width="2.0em"/><mi>u</mi><msub><mo stretchy="false" form="prefix">|</mo><mrow><mi>∂</mi><mi>Ω</mi></mrow></msub><mo>=</mo><mn>0</mn><mi>.</mi></mrow><annotation encoding="application/x-tex">u_t+s(x)(\|\nabla u\|-1)=0,\qquad u|_{\partial\Omega}=0.</annotation></semantics></math></p>
+
+<p>The continuous solution framework motivates arrival of correct boundary distance after sufficient pseudotime. This does not prove exactness of discrete values after the same time.</p>
+
+<p>On smooth nonzero-gradient branches, the characteristic velocity is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mi>∇</mi><mi>u</mi><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><mi>u</mi><mo stretchy="false" form="postfix">∥</mo></mrow><annotation encoding="application/x-tex">s\nabla u/\|\nabla u\|</annotation></semantics></math>, and the value changes at rate <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>. Backtracking gives the first-order update</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mi>u</mi><mrow><mi>n</mi><mo>+</mo><mn>1</mn></mrow></msup><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>≈</mo><msup><mi>u</mi><mi>n</mi></msup><mspace width="-0.167em"/><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo>−</mo><mi>s</mi><mi>Δ</mi><mi>t</mi><mfrac><mrow><mi>∇</mi><msup><mi>u</mi><mi>n</mi></msup><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><msup><mi>u</mi><mi>n</mi></msup><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">∥</mo></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mi>s</mi><mi>Δ</mi><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">u^{n+1}(x)\approx
+u^n\!\left(x-s\Delta t\frac{\nabla u^n(x)}{\|\nabla u^n(x)\|}\right)+s\Delta t.</annotation></semantics></math></p>
+
+<p>At a skeleton, averaging opposing gradients can cancel or invent a spurious direction. The algorithm therefore retains gradients from individual incident elements.</p>
+
+<p>A signed-distance Eikonal statement needs the correct Hamiltonian sign inside: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>p</mi><mo stretchy="false" form="postfix">∥</mo><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\|p\|-1</annotation></semantics></math> outside and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mo stretchy="false" form="postfix">∥</mo><mi>p</mi><mo stretchy="false" form="postfix">∥</mo></mrow><annotation encoding="application/x-tex">1-\|p\|</annotation></semantics></math> inside. The original notes show that treating <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>x</mi><mo stretchy="false" form="prefix">|</mo><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">|x|-1</annotation></semantics></math> inside <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mo>−</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(-1,1)</annotation></semantics></math> as a global viscosity solution of the same unsigned Hamiltonian fails at its minimum.</p>
+
+<h2 id="section-3">3. Geometric initialization</h2>
+
+<ol>
+<li>Detect background elements cut by the input boundary, using adjacency traversal and robust intersection predicates.</li>
+<li>Mark <strong>all vertices</strong> of those elements as fixed seed nodes.</li>
+<li>Compute each seed's true minimum distance to the complete discrete boundary using point-segment/point-triangle queries.</li>
+<li>Classify node signs. Initialize nonseed values to <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>U</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow></msub></mrow><annotation encoding="application/x-tex">s(x)U_{max}</annotation></semantics></math>.</li>
+</ol>
+
+<p>Seed distance requires the nearest boundary primitive globally. Restricting the search to primitives intersecting the current background element needs an additional completeness argument. A BVH is a reasonable implementation choice, not a mandated data structure in the paper.</p>
+
+<p>The layered sign-assignment algorithm starts outside the bounding box and alternates signs across boundary bands. Its printed pseudocode contains undefined <code>Stratum</code> and inconsistent <code>Sign</code>/<code>Sgn</code>, and leaves cut-band vertex classification incomplete. Nearby merged bands, multiple crossings in one cell, and tiny enclosed objects need robust classification or refinement. A whole cut cell cannot simply be assigned one sign.</p>
+
+<h2 id="section-4">4. Discrete propagation</h2>
+
+<p>For each incident simplex <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>, compute the old-field constant gradient <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>g</mi><mi>T</mi></msub><annotation encoding="application/x-tex">g_T</annotation></semantics></math>. For a nonseed vertex <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>x</mi><annotation encoding="application/x-tex">x</annotation></semantics></math>, form</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>y</mi><mi>T</mi></msub><mo>=</mo><mi>x</mi><mo>−</mo><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>Δ</mi><mi>t</mi><mfrac><msub><mi>g</mi><mi>T</mi></msub><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>g</mi><mi>T</mi></msub><mo stretchy="false" form="postfix">∥</mo></mrow></mfrac><mo>,</mo><mspace width="2.0em"/><msub><mi>q</mi><mi>T</mi></msub><mo>=</mo><msup><mi>u</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>y</mi><mi>T</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mi>Δ</mi><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">y_T=x-s(x)\Delta t\frac{g_T}{\|g_T\|},\qquad
+q_T=u^{n-1}(y_T)+s(x)\Delta t.</annotation></semantics></math></p>
+
+<p>Reduce candidates and the old value using <strong>minimum outside</strong> and <strong>maximum inside</strong>. An interior value of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.2</mn></mrow><annotation encoding="application/x-tex">-0.2</annotation></semantics></math> represents a nearer boundary than <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mn>0.3</mn></mrow><annotation encoding="application/x-tex">-0.3</annotation></semantics></math>. Interior initialization must therefore be a large negative value.</p>
+
+<pre><code class="language-text">initialize exact signed seeds and signed large nonseed values
+repeat:
+    new = old
+    for each element:
+        obtain its old-field gradient
+        skip or explicitly handle a near-zero gradient
+        for each nonseed vertex:
+            backtrack using that element's normalized gradient
+            locate the backtracked point in the background mesh
+            interpolate the old field in the containing element
+            reduce the candidate by outside-min or inside-max
+    compute residual and swap buffers
+</code></pre>
+
+<p>Backtracked points can leave the incident element. Locate their actual containing element and interpolate there; unlimited extrapolation of the original element changes the algorithm. The printed scheme reads old values and gradients throughout an iteration, supporting a Jacobi-style double buffer. In-place updates alter propagation order.</p>
+
+<p>Element-parallel candidate generation still needs safe shared-node reductions. Increasing timesteps after initial propagation and freezing reached nodes are acceleration ideas, not unconditional stability or discrete-error certificates. A proposed freezing check uses absolute distance and cumulative pseudotime, not negative interior values compared directly with positive time.</p>
+
+<p>The experimental residual <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∑</mo><mi>i</mi></msub><mo stretchy="false" form="prefix">|</mo><msubsup><mi>u</mi><mi>i</mi><mi>n</mi></msubsup><mo>−</mo><msubsup><mi>u</mi><mi>i</mi><mrow><mi>n</mi><mo>−</mo><mn>1</mn></mrow></msubsup><mo stretchy="false" form="prefix">|</mo></mrow><annotation encoding="application/x-tex">\sum_i|u_i^n-u_i^{n-1}|</annotation></semantics></math> measures iteration change, not error to the exact SDF. Total costs include initialization, point location, iteration count, and remeshing.</p>
+
+<h2 id="section-5">5. Hessian adaptation and geometry errors</h2>
+
+<p>Separate representation and propagation error:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>u</mi><mi>Ω</mi></msub><mo>−</mo><msub><mi>u</mi><mi>h</mi></msub><mo stretchy="false" form="postfix">∥</mo><mo>≤</mo><mo stretchy="false" form="postfix">∥</mo><msub><mi>u</mi><mi>Ω</mi></msub><mo>−</mo><msub><mi>π</mi><mstyle mathvariant="script"><mi>𝒯</mi></mstyle></msub><msub><mi>u</mi><mi>Ω</mi></msub><mo stretchy="false" form="postfix">∥</mo><mo>+</mo><mo stretchy="false" form="postfix">∥</mo><msub><mi>π</mi><mstyle mathvariant="script"><mi>𝒯</mi></mstyle></msub><msub><mi>u</mi><mi>Ω</mi></msub><mo>−</mo><msub><mi>u</mi><mi>h</mi></msub><mo stretchy="false" form="postfix">∥</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\|u_\Omega-u_h\|\le
+\|u_\Omega-\pi_\mathcal T u_\Omega\|
++\|\pi_\mathcal T u_\Omega-u_h\|.</annotation></semantics></math></p>
+
+<p>The adaptation analysis primarily controls the first term. Linear interpolation reproduces affine functions exactly, so second derivatives, rather than gradient magnitude alone, drive the metric.</p>
+
+<p>For recovered Hessian <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>=</mo><mi>P</mi><mo>diag</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>λ</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><msup><mi>P</mi><mi>T</mi></msup></mrow><annotation encoding="application/x-tex">H=P\operatorname{diag}(\lambda_i)P^T</annotation></semantics></math>, the metric is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><mi>P</mi><mo>diag</mo><mo stretchy="false" form="prefix">(</mo><msub><mover><mi>λ</mi><mo accent="true">̃</mo></mover><mi>i</mi></msub><mo stretchy="false" form="postfix">)</mo><msup><mi>P</mi><mi>T</mi></msup><mo>,</mo><mspace width="2.0em"/><msub><mover><mi>λ</mi><mo accent="true">̃</mo></mover><mi>i</mi></msub><mo>=</mo><mo>min</mo><mspace width="-0.167em"/><mrow><mo stretchy="true" form="prefix">[</mo><mo>max</mo><mspace width="-0.167em"/><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mi>c</mi><mo stretchy="false" form="prefix">|</mo><msub><mi>λ</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">|</mo></mrow><mi>ε</mi></mfrac><mo>,</mo><msubsup><mi>h</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow><mrow><mo>−</mo><mn>2</mn></mrow></msubsup><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><msubsup><mi>h</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow><mrow><mo>−</mo><mn>2</mn></mrow></msubsup><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">M=P\operatorname{diag}(\widetilde\lambda_i)P^T,\qquad
+\widetilde\lambda_i=
+\min\!\left[\max\!\left(\frac{c|\lambda_i|}{\varepsilon},h_{max}^{-2}\right),h_{min}^{-2}\right].</annotation></semantics></math></p>
+
+<p>The directional size behaves like <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><mi>ε</mi><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="prefix">|</mo><msub><mi>λ</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">|</mo><mo stretchy="false" form="postfix">)</mo></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{\varepsilon/(c|\lambda_i|)}</annotation></semantics></math>, clipped to the allowed size range. Absolute Hessian means absolute eigenvalues, not elementwise matrix absolute values. If accuracy requires sizes below <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>h</mi><mrow><mi>m</mi><mi>i</mi><mi>n</mi></mrow></msub><annotation encoding="application/x-tex">h_{min}</annotation></semantics></math>, clipping prevents the nominal target from being guaranteed.</p>
+
+<p>A piecewise-linear element's classical interior Hessian is zero; use recovered neighborhood derivatives or quadratic fits. Recovery, smoothing, symmetrization, and metric gradation are engineering modules requiring validation, not fully specified implementations in the paper.</p>
+
+<p>Under regular-band conditions with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>&lt;</mo><mi>m</mi><mo>≤</mo><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><mi>u</mi><mo stretchy="false" form="postfix">∥</mo><mo>≤</mo><mi>L</mi></mrow><annotation encoding="application/x-tex">0&lt;m\le\|\nabla u\|\le L</annotation></semantics></math>, the paper derives</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mo stretchy="false" form="prefix">{</mo><mi>u</mi><mo>=</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo><mo stretchy="false" form="postfix">)</mo><mo>≤</mo><mfrac><mi>L</mi><msup><mi>m</mi><mn>2</mn></msup></mfrac><mo stretchy="false" form="prefix">|</mo><mi>u</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">d(x,\{u=0\})\le \frac{L}{m^2}|u(x)|.</annotation></semantics></math></p>
+
+<p>Applying this to the interpolated zero surface relates interpolation error to one-way geometry error. Reverse/Hausdorff control additionally needs suitable discrete gradients and local zero crossings; the paper's combined estimate neglects certain gradient differences. Global smoothness assumptions fail at skeletons and sharp features.</p>
+
+<p>A simpler exact-SDF observation is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><msub><mi>u</mi><mi>h</mi></msub><mo>−</mo><msub><mi>u</mi><mi>Ω</mi></msub><msub><mo stretchy="false" form="postfix">∥</mo><mi>∞</mi></msub><mo>≤</mo><mi>δ</mi><mo>⇒</mo><munder><mo>sup</mo><mrow><msub><mi>u</mi><mi>h</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>0</mn></mrow></munder><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>∂</mi><mi>Ω</mi><mo stretchy="false" form="postfix">)</mo><mo>≤</mo><mi>δ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\|u_h-u_\Omega\|_\infty\le\delta
+\Longrightarrow
+\sup_{u_h(x)=0}d(x,\partial\Omega)\le\delta.</annotation></semantics></math></p>
+
+<p>This direction alone does not prove that every true boundary component has a reconstructed counterpart. Track both directions of Hausdorff distance, topology, thin-feature retention, and volume.</p>
+
+<p>The tangential Hessian eigenvalues relate to principal curvatures; the normal eigenvalue is zero in a smooth SDF neighborhood. Not every ambient Hessian eigenvalue is a surface principal curvature. Narrow-band adaptation can save work, but compare it fairly with methods solving the full domain.</p>
+
+<h2 id="section-6">6. Reinitialization and Riemannian extension</h2>
+
+<p>Reinitialization adapts near the current zero surface, rebuilds distances, and targets bounded geometric drift. The short discussion does not prove exact volume conservation, invariant topology, retained corners, or bounded cumulative drift over arbitrary repeated cycles.</p>
+
+<p>Distinguish the <strong>mesh-design metric</strong>, which improves approximation of Euclidean distance, from the <strong>distance-defining metric</strong>, which changes the target geometry. With a symmetric positive-definite distance metric <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">M(x)</annotation></semantics></math>,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mrow><mi>∇</mi><msup><mi>u</mi><mi>T</mi></msup><msup><mi>M</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mi>∇</mi><mi>u</mi></mrow></msqrt><mo>=</mo><mn>1</mn><mo>,</mo><mspace width="2.0em"/><msub><mi>a</mi><mi>M</mi></msub><mo>=</mo><mfrac><mrow><msup><mi>M</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mi>∇</mi><mi>u</mi></mrow><msqrt><mrow><mi>∇</mi><msup><mi>u</mi><mi>T</mi></msup><msup><mi>M</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mi>∇</mi><mi>u</mi></mrow></msqrt></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\sqrt{\nabla u^TM^{-1}\nabla u}=1,\qquad
+ a_M=\frac{M^{-1}\nabla u}{\sqrt{\nabla u^TM^{-1}\nabla u}}.</annotation></semantics></math></p>
+
+<p>Replace the Euclidean direction by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>a</mi><mi>M</mi></msub><annotation encoding="application/x-tex">a_M</annotation></semantics></math> in backtracking; it has unit metric speed, not generally unit Euclidean speed. Spatially varying metrics yield curved geodesics, so one straight backtrack is a local approximation. Seed distances must also use the target metric. General high-accuracy Riemannian seed initialization is not fully supplied. The Poincare half-plane uses <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>M</mi><mo>=</mo><msup><mi>y</mi><mrow><mo>−</mo><mn>2</mn></mrow></msup><mi>I</mi></mrow><annotation encoding="application/x-tex">M=y^{-2}I</annotation></semantics></math>.</p>
+
+<h2 id="section-7">7. Experiments, implementation route, and proposal value</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Paper part</th>
+<th>PDF pages</th>
+<th>Reading purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Introduction/background</td>
+<td>1–4</td>
+<td>Input, SDF singularities, propagation framework</td>
+</tr>
+<tr>
+<td>Characteristics</td>
+<td>4–7</td>
+<td>Backtracking derivation</td>
+</tr>
+<tr>
+<td>Numerical algorithms</td>
+<td>7–10</td>
+<td>Seeds, signs, propagation, acceleration</td>
+</tr>
+<tr>
+<td>Adaptation</td>
+<td>9–15</td>
+<td>Hessian metric and geometry-error conditions</td>
+</tr>
+<tr>
+<td>Reinitialization</td>
+<td>15</td>
+<td>Drift-control objective</td>
+</tr>
+<tr>
+<td>Riemannian distance</td>
+<td>15–16</td>
+<td>Dual metric and modified velocity</td>
+</tr>
+<tr>
+<td>Experiments</td>
+<td>16–23</td>
+<td>2D/3D, Cimplex, Wheel, Buddha, Venus, hyperbolic example</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The original examples illustrate anisotropic savings and geometric reconstruction; they do not establish universal superiority over every SDF method or modern GPU implementations. Extracted surface-mesh quality remains a separate task from adapting the volume mesh, as the Wheel example demonstrates.</p>
+
+<p>A practical implementation order is robust boundary predicates and nearest queries → sign/seed validation → double-buffer propagation and point location → residual and independent error checks → Hessian recovery/metric generation → remeshing and <strong>reinitialization against the original boundary</strong>. Merely interpolating the old field onto a new mesh can preserve already-lost features.</p>
+
+<p>For the thesis, this paper supports sampled-field construction and geometry-aware adaptation. It does not by itself supply transport-safe field certificates, material/FSR semantics, complete intersections, strict conservation, or a production implementation. Nodewise monotone iteration also does not establish the full operator monotonicity and viscosity-convergence conditions of Hamilton–Jacobi theory.</p>
+
+    </main>
+  </body>
+</html>

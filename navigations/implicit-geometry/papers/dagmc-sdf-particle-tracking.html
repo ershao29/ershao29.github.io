@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Particle Tracking Acceleration via Signed Distance Fields in DAGMC | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Particle Tracking Acceleration via Signed Distance Fields in DAGMC</h1>
+        <p>Shriwise · Davis · Jacobson · Wilson · 何时可以跳过一次几何求交</p>
+<a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">I · 引言</a></li>
+  <li><a href="#section-2">II · 背景</a></li>
+  <li><a href="#section-3">III · 距离场实现</a></li>
+  <li><a href="#section-4">IV · 首次性能测试</a></li>
+  <li><a href="#section-5">V · 利用率</a></li>
+  <li><a href="#section-6">VI · 球形模型</a></li>
+  <li><a href="#section-7">VII · 带电粒子算例</a></li>
+  <li><a href="#section-8">VIII · 结论与展望</a></li>
+  <li><a href="#exercise">手算安全球判据</a></li>
+  <li><a href="#section-9">总结与展望</a></li>
+  <li><a href="#section-10">对应 demo 与源码</a></li>
+  <li><a href="#section-11">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">I · 引言</h2>
+
+<p>三角化 CAD 的射线查询可能占据输运计算的重要开销。论文保留原几何内核，在调用前先判断这段飞行是否肯定不会遇到边界。</p>
+
+<h2 id="section-2">II · 背景</h2>
+
+<p>区分点是否在体内、到边界的最短距离、沿给定方向的首次命中。这三种查询的输出不同，同一个标量距离不能直接回答全部问题。</p>
+
+<h2 id="section-3">III · 距离场实现</h2>
+
+<p>规则网格存储采样值，插值必须附带误差界。用保守半径在起点或两端构造内部球；只有球覆盖整段飞行时才跳过求交。两端标签相同仍可能夹着空腔。</p>
+
+<h2 id="section-4">IV · 首次性能测试</h2>
+
+<p>把过滤后的跟踪与原内核比较。一次过滤也要查表并访存，减少射线调用次数与缩短总耗时是两个独立观测量，尤其在简单几何中要分别记录。</p>
+
+<h2 id="section-5">V · 利用率</h2>
+
+<p>把成功省略的射线调用数除以候选调用数。靠近边界、飞行较长或误差界较松都会使覆盖失败。这里的利用率描述特定采样条件下的查询行为。</p>
+
+<h2 id="section-6">VI · 球形模型</h2>
+
+<p>以球为可解析参照，按起点半径、方向与飞行距离对可覆盖区域积分。固定飞行距离与按指数分布采样的飞行对应不同平均值；随机游走中后续碰撞点也未必均匀。</p>
+
+<h2 id="section-7">VII · 带电粒子算例</h2>
+
+<p>短步飞行更容易完全落在安全区中。比较原文给出的不同输运问题时，应把步长分布和几何模型一起读，才能解释过滤器何时值得调用。</p>
+
+<h2 id="section-8">VIII · 结论与展望</h2>
+
+<p>预过滤最适合既能认证足够多飞行、原查询又较昂贵的情形。复杂几何中的预计算、存储和回退成本决定最终收益。</p>
+
+<h2 id="exercise">手算安全球判据</h2>
+<p>设一次直线飞行长 1.0，两端都在同一体积内部，已认证的安全半径为 0.65 和 0.45。沿线段从两端分别覆盖这么长的区间，中间有 0.10 的重叠，因此整段都在内部。</p>
+<p>把第二个半径改为 0.25，中间便留下 0.10 的空隙。此时返回原几何内核求交；这个结论只表示证据不足。可以在 nonconvex_example 中观察两端同号却跨过界面的情况。</p>
+<h2 id="section-9">总结与展望</h2>
+
+<p>教学球面算例中，512 个三角形的两端过滤把 5,000 次调用降到 3,709 次，查询耗时从 0.219 s 增至 0.272 s。下一步可以按边界距离分箱统计成功率，解释薄壳为何比实心球更难获益。</p>
+
+<h2 id="section-10">对应 demo 与源码</h2>
+
+<p>直接配套演示：从 Prefilter 阅读覆盖与回退分支，再运行非凸反例和配对游走。这里采用内部为正的约定。</p>
+
+<ul>
+  <li><a href="../code/dagmc-sdf/sdf_preconditioner.html#Prefilter">sdf_preconditioner.py · Prefilter</a></li>
+  <li><a href="../labs/dagmc-sdf.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-11">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/dagmc-sdf-particle-tracking.html">DAGMC-SDF Particle Tracking Acceleration</a></li>
+</ul>
+<figure><img src="../resources/dagmc-sdf/output/ball-certificate.png" alt="两端的安全球能覆盖整段飞行时，才可省略求交。" loading="lazy"><figcaption>两端的安全球能覆盖整段飞行时，才可省略求交。</figcaption></figure>
+    </main>
+  </body>
+</html>

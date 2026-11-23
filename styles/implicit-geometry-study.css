@@ -1,0 +1,114 @@
+@import url("implicit-geometry.css");
+
+main {
+  max-width: 82ch;
+  overflow-wrap: break-word;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  line-height: 1.18;
+}
+
+h2 {
+  margin-top: 2.4rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #dce3e9;
+}
+
+h2, h3, [id] {
+  scroll-margin-top: 1rem;
+}
+
+.entry {
+  margin: 0;
+  padding: 0.8rem 0;
+  border: 0;
+}
+
+.entry h3, .entry p {
+  margin: 0;
+}
+
+.entry p, figcaption {
+  color: #52616e;
+}
+
+.contents, .jump-links {
+  padding: 0.85rem 1.1rem;
+  background: #f2f6fa;
+  border-left: 3px solid #21679d;
+}
+
+.jump-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.15rem;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+pre, .table-scroll, math[display="block"] {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+pre {
+  padding: 1rem;
+  background: #f4f6f8;
+  line-height: 1.5;
+  tab-size: 4;
+}
+
+code {
+  font-family: ui-monospace, monospace;
+}
+
+.source :target {
+  background: #fff0ab;
+  outline: 1px solid #9a6a16;
+}
+
+table {
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #dce3e9;
+}
+
+th {
+  background: #f2f6fa;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+a:focus-visible, summary:focus-visible {
+  outline: 2px solid #065da9;
+  outline-offset: 3px;
+}
+
+@media (max-width: 600px) {
+  main {
+    margin: 0;
+    padding: 1.1rem;
+    border-radius: 0;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+  }
+}

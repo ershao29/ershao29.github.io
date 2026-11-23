@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>From Geometry as Code to Verifiable Transport Geometry: Research Directions for Complex Reactor Cores | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>From Geometry as Code to Verifiable Transport Geometry: Research Directions for Complex Reactor Cores</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Main conclusion and topic priorities</a></li>
+  <li><a href="#section-2">2. Lessons from three groups of materials</a></li>
+  <li><a href="#section-3">3. Essential mathematical constraints and counterexamples</a></li>
+  <li><a href="#section-4">4. Direction 1: multi-material implicit representations and verifiable geometry interfaces</a></li>
+  <li><a href="#section-5">5. Direction 2: nearest valid interface and complete characteristic-track segmentation</a></li>
+  <li><a href="#section-6">6. Direction 3: expression pruning and compilation for transport</a></li>
+  <li><a href="#section-7">7. Direction 4: source-region decomposition and geometry/transport error coupling</a></li>
+  <li><a href="#section-8">8. Direction 5: physics-aware adaptation for deformation, thin cladding, and narrow water gaps</a></li>
+  <li><a href="#section-9">9. Direction 6: geometry sensitivity and differentiable transport</a></li>
+  <li><a href="#section-10">10. Roles of OpenMC, OpenMOC, and Random Ray</a></li>
+  <li><a href="#section-11">11. Defensible contributions and claims to avoid</a></li>
+  <li><a href="#section-12">12. Scope of conclusions</a></li>
+</ul>
+</details>
+<p><strong>Research review and topic recommendations for OpenMC and OpenMOC</strong>
+Prepared: November 10, 2026 (Asia/Shanghai)</p>
+
+<p>Starting from the two Blake Courter articles specified by the user and their technical references, this report combines Matt Keeter's blog, Fidget, related papers, and official OpenMC/OpenMOC materials to propose research topics. The product's original name is <strong>Omega</strong>, used consistently here.</p>
+
+<p><strong>Reading labels:</strong> “Source fact” identifies claims supported by the cited public materials; “Derivation” identifies mathematical analysis under stated assumptions; “Research proposal” identifies work awaiting implementation and validation. No OpenMC/OpenMOC runs, speedups, or physical errors were measured for this report. Reading scope, access restrictions, and source-version limitations are documented in <a href="evidence-and-sources.html">Evidence and sources</a>. All numerical acceptance targets are recommendations.</p>
+
+<h2 id="section-1">1. Main conclusion and topic priorities</h2>
+
+<p>The recommended direction is to <strong>compile implicit geometry programs carrying material semantics and verifiable numerical bounds into a geometry service shared by Monte Carlo event queries and complete MOC segmentation, and connect geometry errors to transport response errors.</strong></p>
+
+<p>This is more specific than expressing a reactor core as an SDF. OpenMC CSG surfaces already use implicit equations, and DAGMC-SDF particle-tracking acceleration was studied in 2017. Research opportunities lie in complex deformation, interface completeness, verifiable intersection, local compilation, source-region subdivision, and transport error control. <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">S24</a><a href="https://docs.openmc.org/en/stable/methods/geometry.html">S25</a></p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Research direction</th>
+<th>Scientific question</th>
+<th>Suggested role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P0</td>
+<td>Nearest valid interface and complete traversal in multi-material implicit geometry</td>
+<td>How can interface completeness be established for general fields, thin layers, and grazing rays?</td>
+<td>First methods paper and shared kernel</td>
+</tr>
+<tr>
+<td>P0</td>
+<td>Three-dimensional MOC source-region segmentation and error control</td>
+<td>How do intersections, source-region volumes, and track-integration errors affect flux and reaction rates?</td>
+<td>Main thesis contribution</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Local expression pruning and compilation for transport</td>
+<td>Can spatial pruning preserve semantics and amortize costs across multi-material, hierarchical queries?</td>
+<td>Performance paper</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Conservative OpenMC geometry prefiltering and hybrid backends</td>
+<td>Which particle events can avoid exact intersection, and how does the benefit depend on mean free path and geometry scale?</td>
+<td>Lower-risk integration route</td>
+</tr>
+<tr>
+<td>P1</td>
+<td>Deformation- and thin-gap-aware source-region adaptation</td>
+<td>Where should geometry accuracy be allocated to reduce neutronic response errors effectively?</td>
+<td>Physical-error and engineering application paper</td>
+</tr>
+<tr>
+<td>P2</td>
+<td>Differentiable geometry for sensitivity and deformation uncertainty</td>
+<td>How can nonsmooth boundary-motion responses be differentiated and separated from statistical noise?</td>
+<td>Later extension</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Suggested thesis or grant title: <strong>Verifiable Implicit Geometry Representations and Three-Dimensional Neutron Transport Methods for Complex Deformed Reactor Cores</strong>. A narrower alternative is <strong>Reliable Characteristic-Track Segmentation and Adaptive Transport Error Control for Multi-Material Implicit Geometry</strong>.</p>
+
+<h2 id="section-2">2. Lessons from three groups of materials</h2>
+
+<h3>2.1 Geometry as Code: executable representation and the limits of product claims</h3>
+
+<p><strong>Source fact.</strong> Courter describes Geometry as Code as expressing geometry and engineering intent through composable functions, and positions Omega as a language, model library, and compilation system. The article describes its WebGPU frontend and relationship to Fidget meshing, while explicitly identifying an early-stage system with limited evidence and an aspiration to open the software stack. This does not establish mature neutron-transport interfaces or superiority over production CAD kernels. <a href="https://www.blakecourter.com/2026/02/07/geometry-as-code.html">S01</a></p>
+
+<p><strong>Research proposal.</strong> Useful transport geometry code should express shape parameters, material regions, instance hierarchy, boundary conditions, numerical tolerances, and valid parameter domains. It should generate CPU/GPU evaluation programs and export diagnostic meshes and consistent validation data. Renderings provide an inspection entry point; the physical calculation requires a complete material partition.</p>
+
+<p>Distinguish three levels:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Output</th>
+<th>Readiness for transport</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Scripts calling a CAD kernel</td>
+<td>B-rep, triangles, or other geometry data</td>
+<td>Depends on the underlying kernel's queries</td>
+</tr>
+<tr>
+<td>Programs expressing implicit fields</td>
+<td>Values, gradients, and zero surfaces</td>
+<td>Still requires material semantics, interface queries, and reliability conditions</td>
+</tr>
+<tr>
+<td>Executable transport geometry</td>
+<td>Region labels, distance bounds, intersection events, and complete segments</td>
+<td>The proposed research target</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>2.2 Field classes: shape accuracy, distance accuracy, and safe stepping</h3>
+
+<p><strong>Source fact.</strong> Courter distinguishes distance fields, unit-gradient fields (UGFs), and fields normalized near the zero surface. A UGF need not equal the exact distance to its zero surface; offsets and Boolean operations act differently on different field classes. Rigorous analysis and logic-preserving constructions can be traced to Luo et al. and the R-functions literature. <a href="https://www.blakecourter.com/2023/05/18/field-notation.html">S02</a><a href="https://www.blakecourter.com/2023/05/05/what-is-offset.html">S03</a><a href="https://link.springer.com/article/10.1007/s10957-018-1414-2">S05</a><a href="https://doi.org/10.1017/S096249290631001X">S06</a></p>
+
+<p><strong>Convention and derivation.</strong> Use negative inside and positive outside for a solid region <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Ω</mi><annotation encoding="application/x-tex">\Omega</annotation></semantics></math> with a well-defined boundary in Euclidean space:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>Ω</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo>dist</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>Ω</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mo>dist</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><msup><mi>Ω</mi><mi>c</mi></msup><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">d_\Omega(x)=\operatorname{dist}(x,\Omega)-\operatorname{dist}(x,\Omega^c).</annotation></semantics></math></p>
+
+<p>A single <code>SDF</code> type name should not hide these distinctions:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>Required property</th>
+<th>Supported use</th>
+<th>Unsupported inference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>General implicit field <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>
+</td>
+<td>Explicit sign semantics; continuity and other conditions when intersecting its zero surface</td>
+<td>Point classification and interval root finding</td>
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>f</mi><mo stretchy="false" form="postfix">|</mo></mrow><annotation encoding="application/x-tex">\lvert f\rvert</annotation></semantics></math> is a length or safe step</td>
+</tr>
+<tr>
+<td>Exact SDF <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>
+</td>
+<td>Signed Euclidean distance to the solid boundary</td>
+<td>Distance queries and physical equidistant offsets</td>
+<td>Its value equals the hit distance along any ray</td>
+</tr>
+<tr>
+<td>UGF <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>u</mi><annotation encoding="application/x-tex">u</annotation></semantics></math>
+</td>
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><mi>u</mi><mo stretchy="false" form="postfix">∥</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\|\nabla u\|=1</annotation></semantics></math> wherever differentiable</td>
+<td>Certain field operations and local analysis</td>
+<td>Global exact distance; global Lipschitz bounds without continuity/regularity</td>
+</tr>
+<tr>
+<td>Proven distance lower bound <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>
+</td>
+<td><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>≤</mo><mi>b</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>≤</mo><mo>dist</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>Γ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">0\le b(x)\le\operatorname{dist}(x,\Gamma)</annotation></semantics></math></td>
+<td>Advancing without crossing the candidate interfaces <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Γ</mi><annotation encoding="application/x-tex">\Gamma</annotation></semantics></math>
+</td>
+<td>Exact offsets or exact normal thickness</td>
+</tr>
+<tr>
+<td>Sampled/neural approximation <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>f</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\tilde f</annotation></semantics></math>
+</td>
+<td>Explicit approximation target and error envelope</td>
+<td>Prefiltering and approximate modeling</td>
+<td>Zero-surface fidelity, thin-layer preservation, or unbiased transport</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For example, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>≤</mo><mn>0</mn><mo>,</mo><mi>y</mi><mo>≤</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">x\le0,y\le0</annotation></semantics></math> can be represented by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">u=\max(x,y)</annotation></semantics></math>. At <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(1,1)</annotation></semantics></math>, the field value is 1, while the true boundary distance is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mn>2</mn></msqrt><annotation encoding="application/x-tex">\sqrt2</annotation></semantics></math>. Piecewise unit gradients do not make this an exact SDF. The field is nevertheless globally 1-Lipschitz and supplies a conservative distance bound: <strong>failure to be an exact SDF does not preclude safe tracking.</strong></p>
+
+<p>For an exact SDF at differentiable points with a unique nearest point, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>−</mo><mi>d</mi><mi>∇</mi><mi>d</mi></mrow><annotation encoding="application/x-tex">x-d\nabla d</annotation></semantics></math> gives the nearest boundary point. Medial axes, multiple projections, and corners require set-valued or branch semantics. A general field's <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>−</mo><mi>f</mi><mi>∇</mi><mi>f</mi></mrow><annotation encoding="application/x-tex">x-f\nabla f</annotation></semantics></math> has no such guarantee.</p>
+
+<p>The surface <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>−</mo><mi>h</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">d-h=0</annotation></semantics></math> has a clear equidistant-offset meaning when <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mi>d</mi></mrow><annotation encoding="application/x-tex">f=d</annotation></semantics></math>. Subtracting a constant from a general twisted field or UGF can change the actual cladding thickness. Layers generated using <code>f-h</code> therefore require separate thickness validation.</p>
+
+<h3>2.3 Matt Keeter: expression processing and failure cases</h3>
+
+<p><strong>Source fact.</strong> Fidget provides expression graphs, instruction tapes, batch evaluation, automatic differentiation, interval arithmetic, and local simplification; its public repository emphasizes native CPU evaluation/JIT. Keeter's 2020 paper studies hierarchical interval evaluation and expression pruning on GPUs. These are related technologies, but do not establish Fidget as a mature GPU neutron-tracking backend. <a href="https://www.mattkeeter.com/projects/fidget/">S10</a><a href="https://github.com/mkeeter/fidget">S11</a><a href="https://www.mattkeeter.com/research/mpr/">S12</a></p>
+
+<p>The table summarizes material directly relevant to topic selection. Transport applications are proposals made here:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Material</th>
+<th>Useful idea</th>
+<th>Additional transport requirements</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><em>Gradients are the new intervals</em></td>
+<td>Estimate field intervals using bounded rates of change; analyze normalization and <code>min/max</code>
+</td>
+<td>Regional Lipschitz evidence and error envelopes; a gradient at one point is insufficient for safety <a href="https://www.mattkeeter.com/blog/2025-05-14-gradients/">S13</a><a href="https://doi.org/10.1111/cgf.70057">S14</a>
+</td>
+</tr>
+<tr>
+<td><em>A cautionary tale about continuity</em></td>
+<td>Modulo repetition can introduce sign jumps without zeros</td>
+<td>Explicit lattice-seam events or a continuity proof for the periodic field <a href="https://www.mattkeeter.com/blog/2025-04-12-continuity/">S15</a>
+</td>
+</tr>
+<tr>
+<td><em>Zero-crossing logic</em></td>
+<td>Contacts and zero ownership need contextual handling</td>
+<td>A crossing state machine using direction, interface identity, and adjacent regions <a href="https://www.mattkeeter.com/blog/2017-05-13-implicit-zeros/">S16</a>
+</td>
+</tr>
+<tr>
+<td><em>Finding bounding boxes</em></td>
+<td>Lost interval correlations can produce very loose bounds</td>
+<td>Combine analytic bounds, local coordinates, and interval subdivision <a href="https://www.mattkeeter.com/blog/2017-09-29-bounds/">S17</a>
+</td>
+</tr>
+<tr>
+<td>Dual-contouring counterexamples</td>
+<td>Refinement alone need not cure escaped vertices or self-intersections</td>
+<td>Validate watertightness, shared faces, thin layers, and volume in mesh references <a href="https://www.mattkeeter.com/blog/2023-04-23-adversarial/">S18</a>
+</td>
+</tr>
+<tr>
+<td>2026 meshing proposal</td>
+<td>Separate surface sampling from mesh-topology construction</td>
+<td>Explicitly unimplemented in the source; not an available backend <a href="https://www.mattkeeter.com/blog/2026-07-03-meshing/">S19</a>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h3>2.4 The cited Monte Carlo method is not neutron Monte Carlo</h3>
+
+<p><strong>Source fact.</strong> The “Monte Carlo techniques” link in Geometry as Code points to Walk on Stars, which addresses linear elliptic PDEs with mixed boundary conditions. Intact provides background on another category of geometry-analysis tools. <a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">S20</a><a href="https://intact-solutions.com/">S21</a></p>
+
+<p><strong>Assessment.</strong> Brownian sphere-jump algorithms do not directly replace neutron direction, energy, collision, or fission-source mechanisms. Geometry queries and mesh-free computation interfaces are relevant, but the shared Monte Carlo label does not justify replacing OpenMC wholesale with WoSt. Diffusion-approximation studies would need their own physical applicability assumptions.</p>
+
+<h2 id="section-3">3. Essential mathematical constraints and counterexamples</h2>
+
+<h3>3.1 Safe stepping requires domain bounds</h3>
+
+<p><strong>Derivation.</strong> Suppose <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math> satisfies the following on a domain <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>D</mi><annotation encoding="application/x-tex">D</annotation></semantics></math> containing the current point and candidate ray segment:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mo>≤</mo><msub><mi>L</mi><mi>D</mi></msub><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><mo>−</mo><mi>y</mi><mo stretchy="false" form="postfix">∥</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">|f(x)-f(y)|\le L_D\|x-y\|,</annotation></semantics></math></p>
+
+<p>For candidate interfaces <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">f=0</annotation></semantics></math>, every zero <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>y</mi><annotation encoding="application/x-tex">y</annotation></semantics></math> in that domain satisfies</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>x</mi><mo>−</mo><mi>y</mi><mo stretchy="false" form="postfix">∥</mo><mo>≥</mo><mo stretchy="false" form="prefix">|</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mi>/</mi><msub><mi>L</mi><mi>D</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\|x-y\|\ge |f(x)|/L_D.</annotation></semantics></math></p>
+
+<p>This provides a basis for safe advancement, with antecedents in sphere tracing and segment tracing. <a href="https://experts.illinois.edu/en/publications/sphere-tracing-a-geometric-method-for-the-antialiased-ray-tracing/">S22</a><a href="https://doi.org/10.1111/cgf.13951">S23</a> A local bound must cover the <strong>entire candidate step</strong> and be reevaluated before leaving its validity domain.</p>
+
+<p>If numerical evaluation satisfies <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mover><mi>f</mi><mo accent="true">̃</mo></mover><mo>−</mo><mi>f</mi><mo stretchy="false" form="prefix">|</mo><mo>≤</mo><msub><mi>η</mi><mi>f</mi></msub></mrow><annotation encoding="application/x-tex">|\tilde f-f|\le\eta_f</annotation></semantics></math>, use</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>b</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo>max</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mo stretchy="false" form="prefix">(</mo><mo stretchy="false" form="prefix">|</mo><mover><mi>f</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mo>−</mo><msub><mi>η</mi><mi>f</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>L</mi><mi>D</mi></msub><mo stretchy="false" form="postfix">}</mo></mrow><annotation encoding="application/x-tex">b(x)=\max\{0,(|\tilde f(x)|-\eta_f)/L_D\}</annotation></semantics></math></p>
+
+<p>as a lower bound under these assumptions, including arithmetic error in <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>η</mi><mi>f</mi></msub><annotation encoding="application/x-tex">\eta_f</annotation></semantics></math>. Near the zero surface, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math> may vanish. The algorithm must switch to root finding or fallback; imposing a minimum step larger than the bound invalidates the guarantee.</p>
+
+<p><strong>Distinction:</strong> a distance lower bound certifies an interface-free region. It is not the directional nearest-boundary distance required by OpenMC <code>distance</code>. That query must return an actual candidate hit, no hit, or an explicit unresolved status; a conservative short step is not a surface event.</p>
+
+<h3>3.2 A hand-computable counterexample</h3>
+
+<p><strong>Derivation.</strong> Consider <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mi>x</mi><mn>2</mn></msup><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">f(x)=x^2-1</annotation></semantics></math>, representing <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mo>−</mo><mn>1</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[-1,1]</annotation></semantics></math>. Apply Sampson-style normalization for <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">x&gt;0</annotation></semantics></math>:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mfrac><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo></mrow><mrow><mo stretchy="false" form="prefix">|</mo><mi>f</mi><mi>′</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo></mrow></mfrac><mo>=</mo><mfrac><mrow><msup><mi>x</mi><mn>2</mn></msup><mo>−</mo><mn>1</mn></mrow><mrow><mn>2</mn><mi>x</mi></mrow></mfrac><mo>,</mo><mspace width="2.0em"/><mi>g</mi><mi>′</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><mo>+</mo><mfrac><mn>1</mn><mrow><mn>2</mn><msup><mi>x</mi><mn>2</mn></msup></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">g(x)=\frac{f(x)}{|f'(x)|}=\frac{x^2-1}{2x},\qquad
+ g'(x)=\frac12+\frac{1}{2x^2}.</annotation></semantics></math></p>
+
+<p>At <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>0.5</mn></mrow><annotation encoding="application/x-tex">x=0.5</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo>=</mo><mo>−</mo><mn>0.75</mn></mrow><annotation encoding="application/x-tex">g=-0.75</annotation></semantics></math>, the true nearest-boundary distance is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0.5</mn><annotation encoding="application/x-tex">0.5</annotation></semantics></math>, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mi>′</mi><mo>=</mo><mn>2.5</mn></mrow><annotation encoding="application/x-tex">g'=2.5</annotation></semantics></math>. Advancing in the positive direction by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>g</mi><mo stretchy="false" form="prefix">|</mo><mo>=</mo><mn>0.75</mn></mrow><annotation encoding="application/x-tex">|g|=0.75</annotation></semantics></math> crosses the boundary. Although <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>g</mi><mi>′</mi><mo stretchy="false" form="prefix">|</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">|g'|=1</annotation></semantics></math> at the positive zero <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">x=1</annotation></semantics></math>, the global safety condition fails.</p>
+
+<p>Consequently:</p>
+
+<ul>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><mi>∇</mi><mi>f</mi><mo stretchy="false" form="postfix">∥</mo></mrow><annotation encoding="application/x-tex">f/\|\nabla f\|</annotation></semantics></math> can approximate distance near a regular zero surface, but is neither a general exact SDF nor a general conservative bound.</li>
+<li>Normalizing before <code>min/max</code> may fix certain branch seams, but does not prove that arbitrary subfields are globally 1-Lipschitz.</li>
+<li>This example uses no Boolean operations and already refutes a general claim that normalization ensures safety.</li>
+</ul>
+
+<p>Keeter shows discontinuities caused by normalization at Boolean seams. The counterexample above further limits the use of such practical techniques as transport reliability proofs. <a href="https://www.mattkeeter.com/blog/2025-05-14-gradients/">S13</a> Courter's AUGF definition concerns a neighborhood of the zero surface and must not be generalized to all space. <a href="https://www.blakecourter.com/2023/05/18/field-notation.html">S02</a></p>
+
+<h3>3.3 Deformed geometry and physical paths</h3>
+
+<p><strong>Derivation.</strong> Describe twisting or bending using an invertible mapping <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><msub><mi>T</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x=T_\theta(q)</annotation></semantics></math>, and define</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>f</mi><mi>θ</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>f</mi><mn>0</mn></msub><mo stretchy="false" form="prefix">(</mo><msubsup><mi>T</mi><mi>θ</mi><mrow><mo>−</mo><mn>1</mn></mrow></msubsup><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">f_\theta(x)=f_0(T_\theta^{-1}(x)).</annotation></semantics></math></p>
+
+<p>This preserves solid correspondence but generally changes Euclidean distance. If <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>f</mi><mn>0</mn></msub><annotation encoding="application/x-tex">f_0</annotation></semantics></math> is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mn>0</mn></msub><annotation encoding="application/x-tex">L_0</annotation></semantics></math>-Lipschitz and the inverse map has a verifiable Lipschitz bound on the valid domain, construct <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>L</mi><mi>θ</mi></msub><annotation encoding="application/x-tex">L_\theta</annotation></semantics></math>. On a suitable convex domain under differentiability assumptions, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mn>0</mn></msub><mo>sup</mo><mo stretchy="false" form="postfix">∥</mo><mi>D</mi><msup><mi>T</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><msub><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msub></mrow><annotation encoding="application/x-tex">L_0\sup\|DT^{-1}\|_2</annotation></semantics></math> supplies an upper bound.</p>
+
+<p>A physical ray <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>x</mi><mn>0</mn></msub><mo>+</mo><mi>s</mi><mi>ω</mi></mrow><annotation encoding="application/x-tex">x(s)=x_0+s\omega</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="postfix">∥</mo><mi>ω</mi><mo stretchy="false" form="postfix">∥</mo><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">\|\omega\|=1</annotation></semantics></math>, generally becomes a curve <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msup><mi>T</mi><mrow><mo>−</mo><mn>1</mn></mrow></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mn>0</mn></msub><mo>+</mo><mi>s</mi><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">q(s)=T^{-1}(x_0+s\omega)</annotation></semantics></math> in reference space. Replacing it by a straight reference-space ray or using reference lengths for optical thickness is invalid. Initially, advance in physical space and use the inverse mapping only for field evaluation.</p>
+
+<p>For mass-conserving material motion, update density under the relevant physical assumptions, for example <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ρ</mi><mo stretchy="false" form="prefix">(</mo><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mo>det</mo><mi>D</mi><mi>T</mi><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>ρ</mi><mn>0</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">\rho(T(q))\det DT(q)=\rho_0(q)</annotation></semantics></math>. Moving boundaries while fixing density is a different experimental control and must be identified explicitly.</p>
+
+<h3>3.4 Same-sign endpoints do not exclude an intervening thin layer</h3>
+
+<p>Along a ray, let <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mn>0</mn></msub><mo>+</mo><mi>t</mi><mi>ω</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">g(t)=f(x_0+t\omega)</annotation></semantics></math>. Same-sign endpoints can enclose two roots, so sign-change tests alone can miss a complete thin layer. Conversely, a tangent multiple root may not switch materials; every numerical zero is not necessarily a crossing.</p>
+
+<p>An interval result <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>∉</mo><mo stretchy="false" form="prefix">[</mo><mi>g</mi><mo stretchy="false" form="postfix">]</mo><mo stretchy="false" form="prefix">(</mo><mi>I</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">0\notin[g](I)</annotation></semantics></math> excludes zeros on that segment. The result <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0</mn><mo>∈</mo><mo stretchy="false" form="prefix">[</mo><mi>g</mi><mo stretchy="false" form="postfix">]</mo><mo stretchy="false" form="prefix">(</mo><mi>I</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">0\in[g](I)</annotation></semantics></math> only means exclusion failed; it does not establish a root. General black-box fields may have arbitrarily dense roots or vanish on whole intervals. Reliable algorithms must specify the function family, degenerate cases, and minimum resolvable scale. Resource exhaustion must return <code>unresolved</code>, never classify an unresolved interval as vacuum.</p>
+
+<h2 id="section-4">4. Direction 1: multi-material implicit representations and verifiable geometry interfaces</h2>
+
+<p><strong>Question.</strong> The zero surface of a whole-core union contains only its exterior; internal fuel/cladding/coolant interfaces are not automatically retained. Tracking the overall material union loses boundaries required by neutron transport.</p>
+
+<p><strong>Proposal.</strong> Build an intermediate representation of field programs, region semantics, and shared interfaces, distinguishing solids, material instances, source regions, and external boundaries:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="normal"><mi>l</mi><mi>o</mi><mi>c</mi><mi>a</mi><mi>t</mi><mi>e</mi></mstyle><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>ω</mi><mo stretchy="false" form="postfix">)</mo><mo>→</mo><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="normal"><mi>c</mi><mi>e</mi><mi>l</mi><mi>l</mi></mstyle><mo>,</mo><mstyle mathvariant="normal"><mi>i</mi><mi>n</mi><mi>s</mi><mi>t</mi><mi>a</mi><mi>n</mi><mi>c</mi><mi>e</mi></mstyle><mo>,</mo><mstyle mathvariant="normal"><mi>m</mi><mi>a</mi><mi>t</mi><mi>e</mi><mi>r</mi><mi>i</mi><mi>a</mi><mi>l</mi></mstyle><mo>,</mo><mstyle mathvariant="normal"><mi>s</mi><mi>o</mi><mi>u</mi><mi>r</mi><mi>c</mi><mi>e</mi><mspace width="0.222em"/><mi>r</mi><mi>e</mi><mi>g</mi><mi>i</mi><mi>o</mi><mi>n</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathrm{locate}(x,\omega)\to
+(\mathrm{cell},\mathrm{instance},\mathrm{material},\mathrm{source\ region}).</annotation></semantics></math></p>
+
+<p>Store each shared interface once, together with its adjacent regions. By default, verify disjoint material interiors and complete coverage of the problem domain. If overlap priorities are necessary, declare them explicitly; arbitrary <code>argmin</code> choices or rule order must not silently select materials.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Proposed interface</th>
+<th>Output</th>
+<th>Contract to validate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>classify(point, direction, state)</code></td>
+<td>Region/material/instance labels or unresolved boundary state</td>
+<td>Consistent ownership of zeros, contacts, and directions</td>
+</tr>
+<tr>
+<td><code>enclose(box)</code></td>
+<td>Field interval, candidate labels, local validity domain</td>
+<td>Encloses true values and retains every possible interface</td>
+</tr>
+<tr>
+<td><code>safe_distance(point, domain)</code></td>
+<td>Distance lower bound and validity domain</td>
+<td>Does not exceed distance to any relevant boundary</td>
+</tr>
+<tr>
+<td><code>next_event(ray, state, limit)</code></td>
+<td>Nearest event, error interval, interface identity</td>
+<td>No earlier unchecked event; correct hierarchy/lattice handling</td>
+</tr>
+<tr>
+<td><code>segments(ray)</code></td>
+<td>Ordered lengths, materials, source regions, and boundary connections</td>
+<td>Complete coverage, no unphysical overlap, total-length closure</td>
+</tr>
+<tr>
+<td><code>normal(event)</code></td>
+<td>Normal or branch state</td>
+<td>Correct smooth-point normals and explicit nonsmooth rules</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Contribution opportunity.</strong> Encode field types, error bounds, shared interfaces, and instance identities in a verifiable transport compilation contract. The contribution is not another <code>min/max</code> Boolean operator. Types should at least distinguish exact distance, conservative lower bound, sign-only validity, and unverified fields.</p>
+
+<p><strong>Validation.</strong> Use cylindrical pin cells, tangent spheres, coplanar neighboring regions, repeated fuel instances, thin cladding, and coincident interfaces. Measure material sequences, interface adjacency, and cross-backend label consistency, in addition to surface images.</p>
+
+<h2 id="section-5">5. Direction 2: nearest valid interface and complete characteristic-track segmentation</h2>
+
+<h3>5.1 Different MC and MOC query workloads</h3>
+
+<p><strong>Source fact.</strong> OpenMC finds the nearest directional boundary across universe/lattice levels; OpenMOC integrates along prescribed tracks through FSRs and already has explicit three-dimensional segmentation functions. <a href="https://docs.openmc.org/en/stable/methods/geometry.html">S25</a><a href="https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp">S27</a><a href="https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html">S29</a><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">S31</a></p>
+
+<p><strong>Proposal.</strong> Share the geometry representation and query primitives while retaining separate execution strategies:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Workload</th>
+<th>Typical requirement</th>
+<th>Promising optimization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Continuous-energy/multigroup Monte Carlo</td>
+<td>Is a boundary crossed before collision, and where is the earliest crossing?</td>
+<td>Certified event prefiltering, nearest positive root, local caching</td>
+</tr>
+<tr>
+<td>Deterministic-track MOC</td>
+<td>What are all material and source-region segments along a track?</td>
+<td>Ordered isolation of all intersections, batch segment generation, cache reuse</td>
+</tr>
+<tr>
+<td>Random Ray</td>
+<td>Source-region traversal and integration across batches of random tracks</td>
+<td>Shared root queries, online region discovery/refinement, caching</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>In homogeneous material, if <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math> bounds distance to every relevant geometry boundary and the sampled collision distance satisfies <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mi>c</mi></msub><mo>&lt;</mo><mi>b</mi></mrow><annotation encoding="application/x-tex">s_c&lt;b</annotation></semantics></math>, the exact boundary query can be skipped; DAGMC-SDF provides prior work. <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">S24</a> Prefiltering must include parent clipping and lattice boundaries, and track-length tally mesh binning must remain correct. Identical start/end material labels do not rule out exiting and reentering a region.</p>
+
+<h3>5.2 Proposed hybrid intersection algorithm</h3>
+
+<ol>
+<li>Exclude irrelevant solids using hierarchical bounding boxes and interval values; order candidate domains by ray distance.</li>
+<li>Retain analytic intersections for planes, cylinders, and other supported primitives; advance conservatively within validity domains for bounded fields.</li>
+<li>Near interfaces, thin layers, or insufficient bounds, restrict <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">g(t)</annotation></semantics></math> to a local interval and isolate candidate events with interval subdivision and applicable interval-Newton or other enclosing root methods.</li>
+<li>Check labels before and after each candidate root to distinguish crossings, tangencies, coincident interfaces, and source-region boundaries; merge identical shared-interface events.</li>
+<li>Return event-location error intervals. Explicitly handle multiple roots, coplanar intervals, and inseparable near-multiple roots; use higher precision or an existing geometry backend when needed.</li>
+<li>MOC traverses to the endpoint and emits every FSR segment; MC may stop at its physical-event limit.</li>
+</ol>
+
+<p>Fallback must represent the same target geometry. A triangle-mesh fallback needs an approximation-error bound; mesh intersections of unknown accuracy are not exact ground truth for a continuous implicit surface.</p>
+
+<p><strong>Candidate contribution.</strong> Jointly verify nearest-root completeness, material transitions, and closure of all source-region segments, while recording cases that cannot be certified at runtime. This offers a stronger methods contribution than adding a sphere-tracing loop.</p>
+
+<p><strong>Baselines.</strong> Analytic CSG, axial slicing, error-checked DAGMC meshes, conservative stepping of the full expression, and unpruned interval root finding. Ablate local bounds, pruning, and fallback separately.</p>
+
+<h2 id="section-6">6. Direction 3: expression pruning and compilation for transport</h2>
+
+<p><strong>Basis.</strong> Keeter's work and Lipschitz Pruning show that inactive expression branches can be excluded within spatial regions. Reducing local expression complexity complements optimizing individual scalar evaluations. <a href="https://www.mattkeeter.com/research/mpr/">S12</a><a href="https://doi.org/10.1111/cgf.70057">S14</a></p>
+
+<p><strong>Proposal.</strong> Preserve core instance hierarchy instead of expanding the whole core into one giant expression. Cache simplified programs for assemblies, pins, or local blocks. For a region centered at <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>c</mi><annotation encoding="application/x-tex">c</annotation></semantics></math> with radius <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>, a proven bound gives</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>B</mi><mo stretchy="false" form="postfix">)</mo><mo>⊆</mo><mo stretchy="false" form="prefix">[</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><msub><mi>L</mi><mi>B</mi></msub><mi>r</mi><mo>,</mo><mspace width="0.222em"/><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>c</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msub><mi>L</mi><mi>B</mi></msub><mi>r</mi><mo stretchy="false" form="postfix">]</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">f(B)\subseteq[f(c)-L_Br,\ f(c)+L_Br].</annotation></semantics></math></p>
+
+<p>Use interval arithmetic for general expressions and the cheaper envelope above for eligible fields, selecting with a cost model. Prune only when enclosing intervals strictly separate. <strong>A branch inactive in the rendered overall union can still carry an internal material interface or FSR identity and must be preserved for transport.</strong></p>
+
+<p>Specific subtopics:</p>
+
+<ul>
+<li>Multi-output compilation: share subexpressions for field values, labels, distance bounds, and gradients, but never incompatible pruning conclusions.</li>
+<li>Reusable caches: include spatial domain, geometry instance, parameter version, and numerical semantics in keys; invalidate affected entries after deformation.</li>
+<li>Track grouping: batch MOC by direction, assembly, or local program; evaluate cache behavior and scheduling costs separately for dispersed MC positions/directions.</li>
+<li>Precision hierarchy: fast far-field screening and double/higher-precision near-interface fallback; establish a conservative reference implementation first.</li>
+</ul>
+
+<p><strong>Risk.</strong> Interval algorithms do not automatically provide rigorous machine-arithmetic enclosures. Audit directed rounding, transcendental errors, NaNs, overflow, fast-math, and GPU semantics. Fidget can support a prototype, but this report does not certify all its existing backends for nuclear transport. <a href="https://www.mattkeeter.com/projects/fidget/">S10</a><a href="https://github.com/mkeeter/fidget">S11</a></p>
+
+<p><strong>Metrics.</strong> Local program-length distributions, field evaluations, bound widths, cache hit rates, compilation/rebuild time, memory, and end-to-end time. Rendering frame rate or isolated evaluation speed does not establish transport acceleration.</p>
+
+<h2 id="section-7">7. Direction 4: source-region decomposition and geometry/transport error coupling</h2>
+
+<h3>7.1 Material regions and flat-source regions</h3>
+
+<p><strong>Proposal.</strong> Strong flux/source variations can require multiple FSRs within one coolant material. Use two partitions: implicit physical material interfaces and an independent source mesh or parameter partition, then intersect them. Source regions may follow bent/twisted shapes, while segment lengths remain physical-space lengths.</p>
+
+<p>Study source-ID stability, geometric versus track-estimated volume, coverage of tiny regions, local leakage, and global balance together. Applying an empirical correction to all lengths does not establish elimination of material-path errors.</p>
+
+<p>OpenMOC has <code>TrackGenerator3D</code> and separate explicit-3D and extruded-region paths. Validate general explicit-3D segmentation first for continuous twisting; enabling <code>OTF_STACKS</code> alone does not establish support for non-extruded geometry. <a href="https://mit-crpg.github.io/OpenMOC/usersguide/input.html">S30</a><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">S31</a><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp">S32</a></p>
+
+<h3>7.2 From intersection error to optical-thickness error</h3>
+
+<p><strong>Derivation.</strong> For a segment with constant cross section and source, parameterized by physical arc length <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math>:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>d</mi><mi>ψ</mi></mrow><mrow><mi>d</mi><mi>s</mi></mrow></mfrac><mo>+</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ψ</mi><mo>=</mo><mi>Q</mi><mo>,</mo><mspace width="2.0em"/><msub><mi>ψ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>ψ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><mo>+</mo><mfrac><mi>Q</mi><msub><mi>Σ</mi><mi>t</mi></msub></mfrac><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><mo stretchy="false" form="postfix">)</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{d\psi}{ds}+\Sigma_t\psi=Q,\qquad
+\psi_{out}=\psi_{in}e^{-\Sigma_t\ell}
++\frac{Q}{\Sigma_t}(1-e^{-\Sigma_t\ell}).</annotation></semantics></math></p>
+
+<p>Here <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Q</mi><annotation encoding="application/x-tex">Q</annotation></semantics></math> includes the chosen angular normalization and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Σ</mi><mi>t</mi></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\Sigma_t&gt;0</annotation></semantics></math>. The vacuum limit is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ψ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub><mo>=</mo><msub><mi>ψ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><mo>+</mo><mi>Q</mi><mi>ℓ</mi></mrow><annotation encoding="application/x-tex">\psi_{out}=\psi_{in}+Q\ell</annotation></semantics></math>. This integration structure follows the MOC equations. <a href="https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html">S29</a></p>
+
+<p>With source, cross section, and incoming flux fixed:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>∂</mi><msub><mi>ψ</mi><mrow><mi>o</mi><mi>u</mi><mi>t</mi></mrow></msub></mrow><mrow><mi>∂</mi><mi>ℓ</mi></mrow></mfrac><mo>=</mo><mo stretchy="false" form="prefix">(</mo><mi>Q</mi><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><msub><mi>ψ</mi><mrow><mi>i</mi><mi>n</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><mo>,</mo><mspace width="2.0em"/><mi>δ</mi><mi>τ</mi><mo>=</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>δ</mi><mi>ℓ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\partial\psi_{out}}{\partial\ell}
+=(Q-\Sigma_t\psi_{in})e^{-\Sigma_t\ell},\qquad
+\delta\tau=\Sigma_t\delta\ell.</annotation></semantics></math></p>
+
+<p>If endpoint errors are bounded by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mi>a</mi></msub><mo>,</mo><msub><mi>ϵ</mi><mi>b</mi></msub></mrow><annotation encoding="application/x-tex">\epsilon_a,\epsilon_b</annotation></semantics></math>, the segment-length error is at most <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mi>a</mi></msub><mo>+</mo><msub><mi>ϵ</mi><mi>b</mi></msub></mrow><annotation encoding="application/x-tex">\epsilon_a+\epsilon_b</annotation></semantics></math>. An A/B interface displacement <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>s</mi></mrow><annotation encoding="application/x-tex">\delta s</annotation></semantics></math> at fixed total path gives first-order optical-thickness error</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>τ</mi><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>Σ</mi><mrow><mi>t</mi><mo>,</mo><mi>A</mi></mrow></msub><mo>−</mo><msub><mi>Σ</mi><mrow><mi>t</mi><mo>,</mo><mi>B</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mi>δ</mi><mi>s</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\delta\tau=(\Sigma_{t,A}-\Sigma_{t,B})\delta s.</annotation></semantics></math></p>
+
+<p>This excludes scattering/fission-source, spectral, and iterative feedback changes. It is a local tolerance-selection indicator, not a complete <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mrow><mi>e</mi><mi>f</mi><mi>f</mi></mrow></msub><annotation encoding="application/x-tex">k_{eff}</annotation></semantics></math> error bound.</p>
+
+<p>For normal-position error <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">\delta n</annotation></semantics></math>, a regular transverse crossing approximately gives</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>δ</mi><mi>s</mi><mo stretchy="false" form="prefix">|</mo><mo>≈</mo><mo stretchy="false" form="prefix">|</mo><mi>δ</mi><mi>n</mi><mo stretchy="false" form="prefix">|</mo><mi>/</mi><mo stretchy="false" form="prefix">|</mo><mi>ω</mi><mo>⋅</mo><mi>n</mi><mo stretchy="false" form="prefix">|</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">|\delta s|\approx |\delta n|/|\omega\cdot n|.</annotation></semantics></math></p>
+
+<p>Errors amplify near grazing incidence, where the limiting linear approximation fails. Thin layers and contact events therefore require additional handling.</p>
+
+<h3>7.3 Proposed scientific question</h3>
+
+<p>Can interface tolerances be allocated jointly using material jumps, directional conditioning, and response importance to minimize cost subject to a target response error?</p>
+
+<p>Start with fixed-source, monoenergetic/few-group tests of local relations, then extend to eigenvalues and assembly power. Separate geometry representation, intersection, source-region, track/angular, multigroup-data, iteration, and MC statistical errors through controlled experiments. A single OpenMC/OpenMOC discrepancy cannot all be attributed to SDF geometry.</p>
+
+<h2 id="section-8">8. Direction 5: physics-aware adaptation for deformation, thin cladding, and narrow water gaps</h2>
+
+<p><strong>Prior context.</strong> Public studies of bent-fuel discretization, ALPHA deformation handling, and MC/MOC for helical fuel establish application needs and require fair comparisons with existing approximations. <a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454919303342">S35</a><a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454921007696">S36</a><a href="https://www.sciencedirect.com/science/article/pii/S0149197025000058">S37</a></p>
+
+<p><strong>Proposal.</strong> Parameterize bent rods, twisted sections, and eccentric thin layers continuously. Evaluate improved representation accuracy and reduced cost at equal physical error separately. Do not assume large global-reactivity effects; examine sensitivity of local power, absorption, and gap flux.</p>
+
+<p>Courter's two-body field suggests a gap coordinate. Where both side fields are nonnegative and their sum is nonzero, define</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ξ</mi><mo>=</mo><mfrac><mrow><msub><mi>d</mi><mi>A</mi></msub><mo>−</mo><msub><mi>d</mi><mi>B</mi></msub></mrow><mrow><msub><mi>d</mi><mi>A</mi></msub><mo>+</mo><msub><mi>d</mi><mi>B</mi></msub></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\xi=\frac{d_A-d_B}{d_A+d_B}.</annotation></semantics></math></p>
+
+<p>Using this for source layers or importance sampling is proposed here. For curved surfaces, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>d</mi><mi>A</mi></msub><mo>+</mo><msub><mi>d</mi><mi>B</mi></msub></mrow><annotation encoding="application/x-tex">d_A+d_B</annotation></semantics></math> is not unconditionally a constant true wall thickness/gap. Contact makes the denominator zero; overlap and medial axes require separate treatment. <a href="https://www.blakecourter.com/2023/07/01/two-body-field.html">S04</a></p>
+
+<p>Compare uniform Cartesian source regions, curvature-only refinement, gap/material-contrast refinement, and refinement informed by preliminary flux/adjoint importance. Compare response error at equal region count or memory, rather than benefiting solely from a denser local mesh.</p>
+
+<p>Multiphysics extensions should address local recompilation, volume/atom-number conservation, source mapping, and relocation after parameter updates. Small deformation can change contact topology, so it does not justify reusing every track.</p>
+
+<h2 id="section-9">9. Direction 6: geometry sensitivity and differentiable transport</h2>
+
+<p><strong>Proposal, priority P2.</strong> After reliable forward geometry and segmentation, study derivatives of power, reaction rates, and leakage with respect to geometry, plus manufacturing/deformation uncertainty. Begin with a few parameters before inverse problems or optimization.</p>
+
+<p><strong>Derivation.</strong> At a unique, smooth, transverse root <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mo>*</mo></msub><mo stretchy="false" form="prefix">(</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">s_*(\theta)</annotation></semantics></math>, with fixed origin and direction:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>x</mi><mn>0</mn></msub><mo>+</mo><msub><mi>s</mi><mo>*</mo></msub><mi>ω</mi><mo>,</mo><mi>θ</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>0</mn><mo>,</mo><mspace width="2.0em"/><mfrac><mrow><mi>d</mi><msub><mi>s</mi><mo>*</mo></msub></mrow><mrow><mi>d</mi><mi>θ</mi></mrow></mfrac><mo>=</mo><mo>−</mo><mfrac><mrow><msub><mi>∂</mi><mi>θ</mi></msub><mi>f</mi></mrow><mrow><msub><mi>∇</mi><mi>x</mi></msub><mi>f</mi><mo>⋅</mo><mi>ω</mi></mrow></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">f(x_0+s_*\omega,\theta)=0,
+\qquad
+\frac{ds_*}{d\theta}
+=-\frac{\partial_\theta f}{\nabla_x f\cdot\omega}.</annotation></semantics></math></p>
+
+<p>If the origin or direction depends on parameters, add the corresponding chain-rule terms to the numerator. This supports segment-length derivatives, but fails directly near tangency, topology changes, or branch switches.</p>
+
+<p><strong>Inspiration and limits.</strong> Differentiable SDF rendering requires explicit treatment of visibility discontinuities: differentiable fields do not automatically yield differentiable path integrals. <a href="https://rgl.epfl.ch/publications/Vicini2022SDF">S38</a> Neutron transport adds cross-section jumps, collision-path probabilities, iterative sources, and eigenvalue responses. Ordinary AD applied to OpenMC does not by itself establish unbiased geometry gradients.</p>
+
+<p>Validation: analytic slab/shell responses → few-group MOC length derivatives on fixed tracks → finite-difference step convergence → correlated MC sampling or suitable shape-derivative estimators. Report derivative errors and variance; one random history's finite difference is insufficient.</p>
+
+<h2 id="section-10">10. Roles of OpenMC, OpenMOC, and Random Ray</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Initial work</th>
+<th>Research value</th>
+<th>Capability not to assume</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Native OpenMC CSG</td>
+<td>Analytic reference models and physical statistical baselines</td>
+<td>Geometry regression and transport reference</td>
+<td>Native arbitrary implicit-program input</td>
+</tr>
+<tr>
+<td>OpenMC + DAGMC</td>
+<td>Validated CAD/mesh comparisons</td>
+<td>Independent geometry path and mesh convergence</td>
+<td>Visualization meshes automatically suitable for reliable transport</td>
+</tr>
+<tr>
+<td>OpenMC + conservative prefilter</td>
+<td>Skip queries when certified unnecessary before the next event</td>
+<td>Performance study with limited changes</td>
+<td>Lower bounds equal nearest hits</td>
+</tr>
+<tr>
+<td>OpenMC + new implicit surfaces/regions</td>
+<td>Expressions, directional intersection, normals, hierarchy</td>
+<td>Direct MC on complex geometry</td>
+<td>Python wrappers alone extend core tracking</td>
+</tr>
+<tr>
+<td>OpenMOC + implicit segmentation</td>
+<td>Explicit-3D FSR segment generation first</td>
+<td>Direct tests of complete traversal and error control</td>
+<td>Extruded optimizations apply to arbitrary continuous deformation</td>
+</tr>
+<tr>
+<td>OpenMC Random Ray</td>
+<td>Validate shared geometry and region decomposition on a pinned version</td>
+<td>Compare fixed/random track costs</td>
+<td>Equivalence to continuous-energy MC or compatibility with every new backend</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>OpenMC <code>Surface</code> methods <code>evaluate</code>, <code>distance</code>, and <code>normal</code> are integration candidates, but serialization, boundary semantics, and state consistency also matter. <code>distance_to_boundary</code> explicitly handles geometry levels and lattices. <a href="https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h">S26</a><a href="https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp">S27</a> The DAGMC API supplies a mesh baseline. <a href="https://docs.openmc.org/en/stable/pythonapi/generated/openmc.DAGMCUniverse.html">S28</a></p>
+
+<p>Official OpenMC documentation provides Random Ray as a multigroup stochastic characteristic method, including source-region meshes and linear-source settings. It is a useful extension comparison, but compatibility with the proposed implicit backend has not been verified here. <a href="https://docs.openmc.org/en/stable/methods/random_ray.html">S33</a><a href="https://docs.openmc.org/en/stable/usersguide/random_ray.html">S34</a></p>
+
+<p>OpenMOC cyclic tracks impose reflective-boundary connectivity requirements. Begin with rectangular/planar outer boundaries and complex interiors. Arbitrary curved reflection introduces angular-closure and track-connection problems that deserve a separate study. <a href="https://mit-crpg.github.io/OpenMOC/methods/track_generation.html">S39</a></p>
+
+<h2 id="section-11">11. Defensible contributions and claims to avoid</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Claim to avoid</th>
+<th>Testable alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>First SDF application in nuclear engineering</td>
+<td>A verifiable complete-traversal algorithm preserving source semantics for continuously deformed multi-material geometry, distinguished from DAGMC-SDF</td>
+</tr>
+<tr>
+<td>Implicit modeling replaces CSG</td>
+<td>Extend existing implicit CSG with additional function families, certified bounds, and compilation backends</td>
+</tr>
+<tr>
+<td>SDFs are inherently mesh-free and error-free</td>
+<td>Certain continuous geometries avoid surface meshing; field approximation, root finding, and transport discretization retain errors</td>
+</tr>
+<tr>
+<td>UGFs guarantee exact distance and cladding thickness</td>
+<td>Validate distance/offset properties by field class; construct thickness constraints or reconstruct distance when necessary</td>
+</tr>
+<tr>
+<td>GPUs necessarily deliver large speedups</td>
+<td>Quantify pruning/batching benefits at stated accuracy and report end-to-end time</td>
+</tr>
+<tr>
+<td>Automatic differentiation enables core optimization</td>
+<td>Validate derivatives under transverse, fixed-topology conditions and handle path/interface discontinuities separately</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Organize three dependent contributions: <strong>multi-material executable geometry and reliable complete traversal → 3D MOC segmentation and adaptive errors → spatial local compilation and cross-method validation</strong>. OpenMC prefiltering can be an early deliverable; differentiable transport follows forward-model maturity.</p>
+
+<h2 id="section-12">12. Scope of conclusions</h2>
+
+<p>This report concerns reactor-neutronics methods, geometry software interfaces, and validation. Its conclusions draw on listed sources and labeled derivations; it is neither a systematic review nor proof of novelty. Web pages, <code>stable</code> documentation, and <code>develop</code> code change. Pin software, nuclear data, geometry parameters, and environments before implementation.</p>
+
+<p>See the <a href="technical-roadmap.html">Technical roadmap</a> for experiments, stages, and acceptance targets, and <a href="evidence-and-sources.html">Evidence and sources</a> for individual source records and reading scope.</p>
+
+    </main>
+  </body>
+</html>

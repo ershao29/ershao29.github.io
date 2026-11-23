@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Euclidean Distance Mapping | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Euclidean Distance Mapping</h1>
+        <p>Per-Erik Danielsson · 像素距离、扫描传播与骨架</p>
+<a href="https://doi.org/10.1016/0146-664X(80)90054-4">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 1–3 页）</a></li>
+  <li><a href="#section-2">2 · 四邻域顺序映射（第 3–6 页）</a></li>
+  <li><a href="#section-3">3 · 误差与八邻域算法（第 6–10 页）</a></li>
+  <li><a href="#section-4">4 · 欧氏圆盘与骨架（第 10–17 页）</a></li>
+  <li><a href="#section-5">5 · 顺序八角映射（第 17–19 页）</a></li>
+  <li><a href="#section-6">6 · 并行欧氏映射（第 19–21 页）</a></li>
+  <li><a href="#section-7">7 · 结论（第 21 页）</a></li>
+  <li><a href="#exercise">纸上运行一次向量更新</a></li>
+  <li><a href="#section-8">总结与展望</a></li>
+  <li><a href="#section-9">对应 demo 与源码</a></li>
+  <li><a href="#section-10">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 1–3 页）</h2>
+
+<p>给定二值图，为每个像素求到另一类最近像素的欧氏距离。先在纸上比较位移 (2,1) 的欧氏、城市街区和棋盘距离，便能看出离散度量如何改变膨胀后的轮廓。</p>
+
+<h2 id="section-2">2 · 四邻域顺序映射（第 3–6 页）</h2>
+
+<p>标签保存指向候选最近像素的两个位移分量。来自邻居的标签要先加上当前像素与邻居的位移，再比较平方长度。扫描在行内前后传播，使信息能跨越多行、多列。</p>
+
+<h2 id="section-3">3 · 误差与八邻域算法（第 6–10 页）</h2>
+
+<p>四个轴向邻居可能都没继承真正最近目标的标签，当前像素便无从选中它。增加对角候选能减少这类遗漏。用穷举最近像素作基准，才能看清向量长度正确而来源像素选错的情形。</p>
+
+<h2 id="section-4">4 · 欧氏圆盘与骨架（第 10–17 页）</h2>
+
+<p>距离值可视作以当前像素为中心的数字圆盘半径。骨架试图留下能代表形状的圆盘中心，再由圆盘重建区域。离散圆盘的覆盖关系影响哪些中心可以删去。</p>
+
+<h2 id="section-5">5 · 顺序八角映射（第 17–19 页）</h2>
+
+<p>八角形是另一种代价较低的距离近似。沿多个方向画出相同距离的点，考察等距线从圆变成多边形后，方向误差怎样传到轮廓和骨架上。</p>
+
+<h2 id="section-6">6 · 并行欧氏映射（第 19–21 页）</h2>
+
+<p>同步邻域传播与顺序扫描有不同的数据依赖。文中讨论标签初始化和传递次序；某些传播路径上，更长的向量仍可能在下一格诱导出更短的候选。</p>
+
+<h2 id="section-7">7 · 结论（第 21 页）</h2>
+
+<p>两分量标签使少量图像扫描能够得到精确度很高的欧氏距离近似。这里的参照对象是离散像素中心；若输入描述连续曲面，采样误差还要另行计算。</p>
+
+<h2 id="exercise">纸上运行一次向量更新</h2>
+<p>假设左邻点记录的最近种子在其左方两格、下方一格。当前点位于左邻点右方一格，从当前点指向同一种子的位移就变成 (−3,−1)，平方长度为 10。若另一邻居给出 (−2,−2)，应选平方长度 8 的候选。</p>
+<p>在 7×7 方格纸上放三个不共线的种子，先穷举填出每格的最近种子，再逐行传播候选。比较最近种子和距离两个字段，注意等距点可以有多个正确标签。</p>
+<h2 id="section-8">总结与展望</h2>
+
+<p>可以做两组对照：先对所有像素穷举最近种子以测传播误差，再用解析圆的连续边界测采样误差。两组误差回答不同的问题。</p>
+
+<h2 id="section-9">对应 demo 与源码</h2>
+
+<p>关联练习：规则网格提供采样与插值的对照，但现有 demo 没有实现本文的 4SED 或 8SED 扫描。</p>
+
+<ul>
+  <li><a href="../code/dagmc-sdf/sdf_preconditioner.html#UniformGrid">sdf_preconditioner.py · UniformGrid</a></li>
+  <li><a href="../labs/dagmc-sdf.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-10">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://doi.org/10.1016/0146-664X(80)90054-4">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/supporting-papers.html">Supporting Papers: Proposal Reading Annotations</a></li>
+</ul>
+    </main>
+  </body>
+</html>

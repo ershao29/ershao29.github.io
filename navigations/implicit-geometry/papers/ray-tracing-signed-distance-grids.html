@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ray Tracing of Signed Distance Function Grids | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Ray Tracing of Signed Distance Function Grids</h1>
+        <p>Hansson-Söderlund · Evans · Akenine-Möller · 在三线性体素里寻找第一条有效根</p>
+<a href="https://jcgt.org/published/0011/03/06/">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 1–2 页）</a></li>
+  <li><a href="#section-2">2 · 体素解析求交（第 2–6 页）</a></li>
+  <li><a href="#section-3">3 · 法线（第 6–9 页）</a></li>
+  <li><a href="#section-4">4 · 结果（第 9–16 页）</a></li>
+  <li><a href="#section-5">5 · 结论与未来方向（第 16 页起）</a></li>
+  <li><a href="#exercise">手算一次双根区间</a></li>
+  <li><a href="#section-6">总结与展望</a></li>
+  <li><a href="#section-7">对应 demo 与源码</a></li>
+  <li><a href="#section-8">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 1–2 页）</h2>
+
+<p>网格只有离散样本。确定重建规则后，真正参与求交的是每个体素内的三线性零面。与原解析曲面的偏差和对这个零面的求交误差需要分别测量。</p>
+
+<h2 id="section-2">2 · 体素解析求交（第 2–6 页）</h2>
+
+<p>把射线的三个坐标代入三线性多项式，得到关于射线参数的至多三次式。先限定射线在当前体素中的区间，再选择最早的有效实根。端点同号仍可能有两个交点，重根也可能没有符号变化。</p>
+
+<h2 id="section-3">3 · 法线（第 6–9 页）</h2>
+
+<p>同一体素的解析梯度可以直接微分得到。相邻体素共享面上的场值，却可以有不同的法向导数，因此着色会出现接缝。比较解析梯度、差分和跨体素连续法线时，要固定命中位置。</p>
+
+<h2 id="section-4">4 · 结果（第 9–16 页）</h2>
+
+<p>把“访问哪些体素”和“在体素内如何求根”拆成两组变量。稀疏体素、砖块和八叉树的遍历成本不同；阴影查询只关心有无遮挡，可以比必须返回最近距离的查询更早结束。</p>
+
+<h2 id="section-5">5 · 结论与未来方向（第 16 页起）</h2>
+
+<p>局部求根与全局加速结构要联合评价。继续追踪更紧的包围体、多分辨率数据和相应滤波时，应保留同一重建场上的参考命中。</p>
+
+<h2 id="exercise">手算一次双根区间</h2>
+<p>在单位体素内取双线性场 f(x,y,z)=(x−¼)(y−¾)，沿对角线 x=y=t、z=½ 行进。进入和离开时的场值都为 3/16，但区间内有 t=¼ 和 t=¾ 两个根。</p>
+<p>求首次命中应返回 ¼；求完整材料分段则要保留两个根。可把八个顶点值传给 cubic_coefficients，检查多项式退化为二次时，first_root 的结果是否符合预期。</p>
+<h2 id="section-6">总结与展望</h2>
+
+<p>教学演示在 16³ 网格上测试 1,000 条随机射线，各方法的命中判断一致。可以再专门构造切触、体素边界及两个近根的射线，比较首次命中参数；量化误差则用单独的 500 条射线报告对照。</p>
+
+<h2 id="section-7">对应 demo 与源码</h2>
+
+<p>直接配套演示：先读 cubic_coefficients 和 first_root，再读 Grid.trace 与 Grid.normal。使用内部为负的场约定。</p>
+
+<ul>
+  <li><a href="../code/sdf-ray-tracing/sdf_grid.html#first_root">sdf_grid.py · first_root</a></li>
+  <li><a href="../labs/sdf-ray-tracing.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-8">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://jcgt.org/published/0011/03/06/">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/ray-tracing-sdf-grids.html">Ray Tracing of Signed Distance Function Grids</a></li>
+</ul>
+<figure><img src="../resources/sdf-ray-tracing/output/comparison.png" alt="同一重建曲面的解析、四面体差分和连续法线着色。" loading="lazy"><figcaption>同一重建曲面的解析、四面体差分和连续法线着色。</figcaption></figure>
+    </main>
+  </body>
+</html>

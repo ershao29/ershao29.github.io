@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Research Topics in Implicit Geometry and Neutron Transport | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Research Topics in Implicit Geometry and Neutron Transport</h1>
+        
+      </header>
+<p>My assessment: <strong>implicit modeling is most valuable when complex material partitions, reliable geometry queries, and geometry error control are combined in a representation shared by Monte Carlo and deterministic solvers.</strong> A different surface notation alone is insufficient for a strong doctoral topic.</p>
+
+<p>Two facts directly affect topic positioning:</p>
+
+<ul>
+<li>
+<strong>Conventional Monte Carlo CSG already constitutes implicit modeling.</strong> OpenMC represents surfaces by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">f(x,y,z)=0</annotation></semantics></math> and combines half-spaces through intersection, union, and complement; MCNP follows similar ideas. Specify whether the proposed object is general implicit surfaces, distance fields, multi-material level sets, or neural representations. <a href="https://docs.openmc.org/en/latest/methods/geometry.html">OpenMC geometry methods</a>
+</li>
+<li>
+<strong>Deterministic methods do not inherently require fitted meshes.</strong> <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>N</mi></msub><annotation encoding="application/x-tex">S_N</annotation></semantics></math> specifies angular discretization; spatial discretization has several alternatives. Immersed-body methods and adaptive meshes have already been applied to neutron transport without fitting every internal structure. <a href="https://www.sciencedirect.com/science/article/abs/pii/S030645491930297X">Buchan et al., 2019</a>
+</li>
+</ul>
+
+<p>The following develops research directions from concrete problems and distinguishes prior work from opportunities.</p>
+
+<p><strong>Start with what solvers require from geometry.</strong></p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Main geometry requirements</th>
+<th>Main difficulty</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Monte Carlo surface tracking</td>
+<td>Containing region, next directional interface, post-crossing region, boundary conditions</td>
+<td>Many queries; rare misses can cause lost particles or bias</td>
+</tr>
+<tr>
+<td>Monte Carlo delta tracking</td>
+<td>Material at candidate collisions, cross-section majorants, outer boundaries</td>
+<td>Fewer interface intersections but more material queries/null collisions</td>
+</tr>
+<tr>
+<td>MOC</td>
+<td>Track intersections, regional segment lengths, integration weights</td>
+<td>Many segments; costly 3D storage or online generation</td>
+</tr>
+<tr>
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>N</mi></msub><annotation encoding="application/x-tex">S_N</annotation></semantics></math> with finite elements/volumes</td>
+<td>Cell volumes, interface areas/normals, materials, adjacency/upwind dependencies</td>
+<td>Coupled approximation, integration, mesh quality, and sweep efficiency</td>
+</tr>
+<tr>
+<td>Diffusion/nodal methods</td>
+<td>Material regions, volumes/interfaces, equivalent parameters/conditions</td>
+<td>Detail versus homogenization and cross-model consistency</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Two qualifications matter. Serpent delta tracking need not stop at every material interface, but still needs correct material queries; local strong absorbers can inflate global majorants and reduce efficiency. <a href="https://serpent.vtt.fi/mediawiki/index.php?title=Delta-_and_surface-tracking">Serpent tracking algorithms</a> MOC shares many MC geometry needs: OpenMOC requires location, nearest-interface distance, and segmentation, with additional 3D track-memory challenges. <a href="https://mit-crpg.github.io/OpenMOC/methods/track_generation.html">OpenMOC track generation</a></p>
+
+<p><strong>Organize geometry difficulties along modeling, queries, discretization, and validation.</strong></p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Difficulty</th>
+<th>Transport effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Engineering-to-computational model</td>
+<td>CAD solids/faces/edges require conversion and often extensive decomposition</td>
+<td>Costly conversion, expanding regions/Booleans, difficult updates</td>
+</tr>
+<tr>
+<td>Material partition/completeness</td>
+<td>Overlap, undefined space, inconsistent contacts; coolant/vacuum semantics</td>
+<td>Ambiguous ownership and failed post-crossing location</td>
+</tr>
+<tr>
+<td>Multiscale/repeated structures</td>
+<td>Thin cladding/gaps coexist with core scales, lattices, and random particles</td>
+<td>Uniform accuracy wastes resources; coarsening loses layers</td>
+</tr>
+<tr>
+<td>Point location</td>
+<td>Candidate selection, containment, nested coordinates, boundary points</td>
+<td>Expensive searches or incorrect material/temperature/depletion instances</td>
+</tr>
+<tr>
+<td>Intersections</td>
+<td>Nearest valid roots, multiple roots, tangency, coincidence, tiny segments, repeated hits</td>
+<td>Missed layers, wrong sequences, zero-step loops, lost particles</td>
+</tr>
+<tr>
+<td>Normals/boundaries</td>
+<td>Approximated surfaces and ambiguous corner/contact normals</td>
+<td>Reflection, surface-current tallies, deterministic interface flux</td>
+</tr>
+<tr>
+<td>Deterministic space discretization</td>
+<td>Difficult fitted meshes; unfitted methods face jumps/cut cells</td>
+<td>Coupled geometry/integration errors, stability, efficiency</td>
+</tr>
+<tr>
+<td>Volume/source/tallies</td>
+<td>Difficult volumes, thin-region sampling, tally mappings</td>
+<td>Normalization, sources, depletion inventories, coupled conservation</td>
+</tr>
+<tr>
+<td>Geometry changes</td>
+<td>Expansion, bending, displacement require updates</td>
+<td>Rebuild meshes/tracks/structures; inconsistent multiphysics boundaries</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Slices/random tests miss defects and degeneracies</td>
+<td>Visual agreement or no observed lost particles is insufficient</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Engineering evidence exists: McCAD research still addresses decomposition, auxiliary surfaces, and void-expression complexity. Converted geometry quality continues to affect transport efficiency. <a href="https://www.mdpi.com/2673-4362/4/2/31">McCAD conversion, 2023</a></p>
+
+<p>DAGMC requires shared adjacent-volume interfaces and watertight triangles. <strong>Valid CAD solids, watertight meshes, and correct material partitions are distinct requirements.</strong> <a href="https://svalinn.github.io/DAGMC/usersguide/cubit_basics.html">DAGMC preprocessing</a>, <a href="https://svalinn.github.io/DAGMC/usersguide/tools.html">Watertightness tools</a></p>
+
+<p>OpenMC documentation notes that particle-based overlap checks cover only regions actually visited. <a href="https://docs.openmc.org/en/latest/usersguide/troubleshoot.html#geometry-debugging">Geometry debugging</a></p>
+
+<p>Three issues deserve closer attention.</p>
+
+<p><strong>First, testing containment in a known solid differs from locating a material region across an entire reactor.</strong></p>
+
+<p>Evaluating the sign of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">f(\mathbf x)</annotation></semantics></math> for one known object may be cheap. Large models contain many solids, hierarchies, and repeated instances, raising questions:</p>
+
+<ul>
+<li>Which candidate solids should be queried?</li>
+<li>How are simultaneous inside classifications handled?</li>
+<li>At shared interfaces, how does direction determine the next state?</li>
+<li>Do same-material instances have different temperatures, depletion zones, or tallies?</li>
+</ul>
+
+<p><strong>Implicit representations still need spatial indexes, hierarchies, and region semantics.</strong> Combining every component into one function does not automatically yield efficient global location.</p>
+
+<p><strong>Second, shortest spatial boundary distance differs from directional boundary distance.</strong></p>
+
+<p>Let <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">d(\mathbf x)</annotation></semantics></math> be signed distance and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mstyle mathvariant="bold"><mi>𝛀</mi></mstyle><annotation encoding="application/x-tex">\boldsymbol\Omega</annotation></semantics></math> a unit flight direction. Surface tracking needs the next valid ray event:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mstyle mathvariant="bold"><mi>𝐫</mi></mstyle><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo>+</mo><mi>s</mi><mstyle mathvariant="bold"><mi>𝛀</mi></mstyle><mi>.</mi></mrow><annotation encoding="application/x-tex">\mathbf r(s)=\mathbf x+s\boldsymbol\Omega .</annotation></semantics></math></p>
+
+<p>Solving <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐫</mi></mstyle><mo stretchy="false" form="prefix">(</mo><mi>s</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">f(\mathbf r(s))=0</annotation></semantics></math> must also determine:</p>
+
+<ul>
+<li>Is this the nearest valid intersection or a later one?</li>
+<li>Is the ray tangent or truly crossing?</li>
+<li>Is this an auxiliary Boolean surface or an actual region boundary?</li>
+<li>Is there a thin material layer between adjacent crossings?</li>
+</ul>
+
+<p><strong>Identical endpoint materials can hide an intervening thin layer.</strong> Endpoint labels or sign-change checks alone can miss it.</p>
+
+<p><strong>Third, measure geometry errors through physical responses.</strong></p>
+
+<p>For a fixed ray and piecewise-constant cross sections, misclassifying length <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>ℓ</mi></mrow><annotation encoding="application/x-tex">\delta\ell</annotation></semantics></math> of B as A gives optical-thickness error</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>τ</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Σ</mi><mrow><mi>t</mi><mo>,</mo><mi>A</mi></mrow></msub><mo>−</mo><msub><mi>Σ</mi><mrow><mi>t</mi><mo>,</mo><mi>B</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>δ</mi><mi>ℓ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\delta\tau
+=
+\left(\Sigma_{t,A}-\Sigma_{t,B}\right)\delta\ell .</annotation></semantics></math></p>
+
+<p>Since uncollided transmission is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msup><mi>e</mi><mrow><mo>−</mo><mi>τ</mi></mrow></msup></mrow><annotation encoding="application/x-tex">T=e^{-\tau}</annotation></semantics></math>, small perturbations give</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mfrac><mrow><mi>δ</mi><mi>T</mi></mrow><mi>T</mi></mfrac><mo>≈</mo><mo>−</mo><mi>δ</mi><mi>τ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\frac{\delta T}{T}\approx-\delta\tau .</annotation></semantics></math></p>
+
+<p>The same displacement can have very different effects in weak absorbers and strongly absorbing thin layers. Gap connectivity changes can exceed what a small surface-deviation metric describes.</p>
+
+<p>Evaluate local rates, power, leakage, and streaming as well as shape similarity, total volume, and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mstyle mathvariant="normal"><mi>e</mi><mi>f</mi><mi>f</mi></mstyle></msub><annotation encoding="application/x-tex">k_{\mathrm{eff}}</annotation></semantics></math>. Geometry-approximation bias does not vanish with more Monte Carlo particles.</p>
+
+<p><strong>Distinguish general implicit functions, SDFs, and approximations.</strong></p>
+
+<p>For a sphere:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo>−</mo><mstyle mathvariant="bold"><mi>𝐜</mi></mstyle><msup><mo stretchy="false" form="postfix">∥</mo><mn>2</mn></msup><mo>−</mo><msup><mi>R</mi><mn>2</mn></msup><mo>,</mo><mspace width="2.0em"/><mi>d</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mo stretchy="false" form="postfix">∥</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo>−</mo><mstyle mathvariant="bold"><mi>𝐜</mi></mstyle><mo stretchy="false" form="postfix">∥</mo><mo>−</mo><mi>R</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">f(\mathbf x)=\|\mathbf x-\mathbf c\|^2-R^2,
+\qquad
+d(\mathbf x)=\|\mathbf x-\mathbf c\|-R .</annotation></semantics></math></p>
+
+<p>Both functions describe the same zero set; only the latter is its SDF. General implicit values cannot be used directly as spatial steps.</p>
+
+<p>Additional qualifications:</p>
+
+<ul>
+<li>Boolean combinations generally cease to be exact SDFs; safe stepping depends on lower bounds or Lipschitz properties.</li>
+<li>Interpolated/neural approximate SDFs may overestimate distance and cross interfaces.</li>
+<li>An exterior-shape SDF does not contain every internal material interface.</li>
+<li>Smooth Booleans can move surfaces, round corners, or change thickness.</li>
+<li>Implicit geometry reduces explicit-surface maintenance but still requires volume, interface-integration, and topology algorithms.</li>
+</ul>
+
+<p>These problems motivate six research directions.</p>
+
+<ol>
+<li>
+<p><strong>Hierarchical hybrid implicit representations for multi-material transport.</strong></p>
+<p>Addresses expression complexity, material partitions, and multiscale repetition.</p>
+<p>Retain analytic CSG/lattice reuse for regular rods/assemblies; use local level sets, spline implicit fields, or adaptive distance fields for free-form/bent parts. Preserve shared interfaces, adjacent regions, instance IDs, and physical properties.</p>
+<p>Research thin-layer/contact preservation at specified error, overlap/void detection, and local updates after local changes.</p>
+<p>Hybrid geometry has precedents, including Shift's hierarchical CAD/CSG. Focus novelty on <strong>implicit-representation error constraints, material consistency, and query performance</strong>. <a href="https://www.sciencedirect.com/science/article/pii/S0306454922005990">Biondo et al., 2023</a></p>
+</li>
+<li>
+<p><strong>Point location and first-intersection queries with verifiable errors.</strong></p>
+<p>Recommended first priority, directly useful for MC and MOC.</p>
+<p>Combine conservative exclusion with local accurate solutions: skip certified interface-free space, then use root isolation, intervals, or analytics near interfaces, including thin layers, grazing rays, and coincidence.</p>
+<p>If <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math> has a reliable Lipschitz upper bound <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math> over the relevant region, its zero-set distance satisfies</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>dist</mo><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo>,</mo><mo stretchy="false" form="prefix">{</mo><mi>f</mi><mo>=</mo><mn>0</mn><mo stretchy="false" form="postfix">}</mo><mo stretchy="false" form="postfix">)</mo><mo>≥</mo><mfrac><mrow><mo stretchy="false" form="prefix">|</mo><mi>f</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo></mrow><mi>L</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">\operatorname{dist}(\mathbf x,\{f=0\})
+   \ge \frac{|f(\mathbf x)|}{L}.</annotation></semantics></math></p>
+<p>For computed <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mover><mi>f</mi><mo accent="true">̃</mo></mover><annotation encoding="application/x-tex">\widetilde f</annotation></semantics></math> with a validated bound
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mover><mi>f</mi><mo accent="true">̃</mo></mover><mo>−</mo><mi>f</mi><mo stretchy="false" form="prefix">|</mo><mo>≤</mo><msub><mi>ε</mi><mi>f</mi></msub></mrow><annotation encoding="application/x-tex">|\widetilde f-f|\le\varepsilon_f</annotation></semantics></math>, construct the conservative step</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mstyle mathvariant="normal"><mi>s</mi><mi>a</mi><mi>f</mi><mi>e</mi></mstyle></msub><mo>=</mo><mfrac><mrow><mo>max</mo><mo stretchy="false" form="prefix">(</mo><mn>0</mn><mo>,</mo><mo stretchy="false" form="prefix">|</mo><mover><mi>f</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mo>−</mo><msub><mi>ε</mi><mi>f</mi></msub><mo stretchy="false" form="postfix">)</mo></mrow><mi>L</mi></mfrac><mi>.</mi></mrow><annotation encoding="application/x-tex">s_{\mathrm{safe}}
+   =
+   \frac{\max(0,|\widetilde f(\mathbf x)|-\varepsilon_f)}{L}.</annotation></semantics></math></p>
+<p>Guarantees require valid bounds, domains, and coverage of every relevant interface. The challenge is <strong>obtaining tight, inexpensive error bounds</strong>.</p>
+<p>Conservative sphere tracing is established, and DAGMC-SDF prefiltering dates to 2017. Transport sphere tracing alone is insufficient novelty; address materials, degeneracy, proofs, and performance failure. <a href="https://graphics.stanford.edu/courses/cs348b-20-spring-content/uploads/hart.pdf">Hart</a>, <a href="https://doi.org/10.1016/j.net.2017.08.008">Shriwise et al., 2017</a></p>
+</li>
+<li>
+<p><strong>Response-based geometry error estimation and adaptation.</strong></p>
+<p>Uniform tolerances ignore spatial importance.</p>
+<p>Which interfaces need refinement to meet local-power or leakage targets?</p>
+<p>Combine displacement error, cross-section contrast, and forward/adjoint information in an indicator. For small differentiable, topology-preserving perturbations, begin with shape sensitivity:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mi>R</mi><mo>≈</mo><msub><mo>∫</mo><mi>Γ</mi></msub><msub><mi>G</mi><mi>R</mi></msub><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"/><mi>δ</mi><mi>n</mi><mo stretchy="false" form="prefix">(</mo><mstyle mathvariant="bold"><mi>𝐱</mi></mstyle><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"/><mstyle mathvariant="normal"><mi>d</mi></mstyle><mi>S</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\delta R
+   \approx
+   \int_\Gamma G_R(\mathbf x)\,
+   \delta n(\mathbf x)\,\mathrm dS .</annotation></semantics></math></p>
+<p>Here <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>G</mi><mi>R</mi></msub><annotation encoding="application/x-tex">G_R</annotation></semantics></math> measures response sensitivity to normal interface displacement; refine fields or root tolerances by response contribution.</p>
+<p><strong>Begin with computable estimators, then investigate conservative bounds.</strong> Channel opening/closing requires separate topology treatment. Existing neutron geometry-sensitivity methods provide a basis. <a href="https://arxiv.org/abs/2501.06397">Variansyah et al., 2025 preprint</a></p>
+</li>
+<li>
+<p><strong>Implicit interfaces coupled to unfitted deterministic discretization.</strong></p>
+<p>Geometry-fitting can create many cells where the physical solution needs less resolution.</p>
+<p>Carry the solution on background cells <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>K</mi><annotation encoding="application/x-tex">K</annotation></semantics></math>, define materials by <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Ω</mi><mi>m</mi></msub><annotation encoding="application/x-tex">\Omega_m</annotation></semantics></math>, and study cut-domain integration/discretization:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mo>∫</mo><mrow><mi>K</mi><mo>∩</mo><msub><mi>Ω</mi><mi>m</mi></msub></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>⋯</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"/><mstyle mathvariant="normal"><mi>d</mi></mstyle><mi>V</mi><mo>,</mo><mspace width="2.0em"/><msub><mo>∫</mo><mrow><mi>K</mi><mo>∩</mo><mi>Γ</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>⋯</mi><mo stretchy="false" form="postfix">)</mo><mspace width="0.167em"/><mstyle mathvariant="normal"><mi>d</mi></mstyle><mi>S</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\int_{K\cap\Omega_m}(\cdots)\,\mathrm dV,
+   \qquad
+   \int_{K\cap\Gamma}(\cdots)\,\mathrm dS .</annotation></semantics></math></p>
+<p>Questions include conservative exchange, high-order integration, tiny-cut-cell stability, positivity, and the diffusion limit.</p>
+<p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>N</mi></msub><annotation encoding="application/x-tex">S_N</annotation></semantics></math> also requires sweep analysis: curved/complex cells can create cyclic upwind dependencies, so improved geometry does not automatically speed the solver. <a href="https://arxiv.org/abs/1810.11080">High-order curved-mesh sweeps</a></p>
+<p>High-order implicit integration and cut-cell stabilization exist; efficient conservative multi-material neutron transport still needs focused research. <a href="https://math.lbl.gov/saye/96629.pdf">Saye, 2015</a>, <a href="https://arxiv.org/abs/1906.05642">Engwer et al.</a></p>
+<p>Initially validate integration/conservation on diffusion interfaces, then <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>N</mi></msub><annotation encoding="application/x-tex">S_N</annotation></semantics></math>; an existing MOC platform favors implicit segmentation first.</p>
+</li>
+<li>
+<p><strong>Multiphysics consistency and shape sensitivities under changing geometry.</strong></p>
+<p>Addresses repeated reconstruction for thermal deformation, displacement, and parameter scans.</p>
+<p>Implicit fields enable continuous parameterization/local changes, but require volume accuracy, density/nuclide conservation, conservative field transfer, and incremental track/acceleration updates.</p>
+<p><strong>Differentiable geometry functions do not automatically yield correct transport derivatives.</strong> Material jumps, collision sampling, and boundary crossings require shape derivatives, adjoints, or derivative-source methods.</p>
+<p>Start with sequences of static parameterized geometries before moving interfaces in time.</p>
+</li>
+<li>
+<p><strong>Neural implicit geometry with reliability constraints.</strong></p>
+<p>Addresses complex free-form compression, scan reconstruction, and similar instances.</p>
+<p>DeepSDF demonstrates continuous neural shape representations, but its objectives differ from reliable transport geometry. <a href="https://openaccess.thecvf.com/content_CVPR_2019/html/Park_DeepSDF_Learning_Continuous_Signed_Distance_Functions_for_Shape_Representation_CVPR_2019_paper.html">DeepSDF, 2019</a></p>
+<p>Research thin-layer/topology protection, local errors, and neural proposals verified by reliable algorithms.</p>
+<p>Treat this as a higher-risk extension. Neural inference may be slower than simple analytics; include training, preprocessing, and validation costs.</p>
+</li>
+</ol>
+
+<p><strong>For a doctoral focus, prioritize reliable queries and response error control.</strong></p>
+
+<p>A possible title:</p>
+
+<blockquote>
+<p><strong>Implicit Geometry Queries and Error Control for Complex Multi-Material Neutron Transport.</strong></p>
+</blockquote>
+
+<p>Three successive questions: preserve material interfaces; locate/intersect efficiently and reliably; allocate geometry accuracy by physical response. This combines computational geometry with reactor-physics criteria.</p>
+
+<p>Suggested initial experiments:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th>Objects</th>
+<th>Checks</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Geometry</td>
+<td>Spheres, cylinders, thin shells, nesting, shared faces, grazing rays</td>
+<td>Labels, first hits, complete sequences, normals, degeneracy</td>
+</tr>
+<tr>
+<td>Simplified transport</td>
+<td>Layers, thin absorbers, narrow gaps, bent channels</td>
+<td>Optical thickness, transmission, rates, leakage</td>
+</tr>
+<tr>
+<td>Reactor</td>
+<td>Pin arrays, assemblies, increasingly irregular components</td>
+<td>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mstyle mathvariant="normal"><mi>e</mi><mi>f</mi><mi>f</mi></mstyle></msub><annotation encoding="application/x-tex">k_{\mathrm{eff}}</annotation></semantics></math>, local power, memory, total time</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Use C5G7 for heterogeneous regions/local power and SINBAD for streaming. <a href="https://oecd-nea.org/jcms/pl_71167/benchmark-activities-on-reactor-single-and-multi-physics-of-the-working-party-on-scientific-issues-and-uncertainty-analysis-of-reactor-systems-wprs">NEA C5G7 entry</a>, <a href="https://cms.oecd-nea.org/science/wprs/shielding/sinbad/iri_tub/iritub-a.htm">SINBAD streaming benchmark</a></p>
+
+<p>Separate two comparisons:</p>
+
+<ul>
+<li>
+<strong>Fixed geometry, changed query algorithm:</strong> speed, memory, query reliability.</li>
+<li>
+<strong>Changed representation accuracy:</strong> physical-response effects with controlled statistical/discretization errors.</li>
+</ul>
+
+<p>The earliest testable hypothesis is whether adaptive implicit geometry lowers <strong>model preparation + queries + transport</strong> cost while preserving layers/topology and meeting a response-error target. This identifies both useful implicit regimes and cases favoring analytic CSG or other representations.</p>
+
+    </main>
+  </body>
+</html>

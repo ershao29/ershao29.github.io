@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Source Index, Citation Relationships, and Evidence Boundaries | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Source Index, Citation Relationships, and Evidence Boundaries</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Reading path</a></li>
+  <li><a href="#section-2">2. Different strengths of evidence</a></li>
+  <li><a href="#section-3">3. Individual sources</a></li>
+  <li><a href="#section-4">4. Use of existing local materials</a></li>
+  <li><a href="#section-5">5. Evidence gaps before formal project approval</a></li>
+</ul>
+</details>
+<p>Original review date: November 10, 2026. There are 41 source records, including failed access, abstract-only, and further-reading entries; <strong>this does not mean 41 full texts were read</strong>. The original review prioritized implicit geometry, numerical reliability, and transport integration rather than every commercial/social link, interview, or nested reference.</p>
+
+<h2 id="section-1">1. Reading path</h2>
+
+<pre><code class="language-text">User-specified Geometry as Code
+ ├─ Omega: representation, compilation, engineering intent, early stage
+ ├─ Fidget → project documentation/repository → Keeter 2020 GPU paper
+ └─ Monte Carlo techniques → Walk on Stars (elliptic PDEs)
+
+User-specified field-notation
+ ├─ Earlier offset article → field versus geometric offsets
+ ├─ Later two-body field article → gap coordinates
+ ├─ Luo / Shapiro → variational analysis / R-functions (public abstracts)
+ └─ hg_sdf / Sampson / Quilez → bounds/normalization; latter originals inaccessible
+
+Matt Keeter blog index
+ ├─ gradients → Lipschitz Pruning research and author code
+ ├─ continuity / zero-crossing / bounds → reliability and boundary semantics
+ └─ adversarial / 2026 meshing → mesh-reference risks and further reading
+
+Additional neutron-transport context
+ ├─ Hart / Segment Tracing → safe-stepping conditions
+ ├─ DAGMC-SDF 2017 → prior nuclear-engineering application
+ ├─ OpenMC / OpenMOC documentation and key code → integration limits
+ └─ Deformation neutronics / differentiable SDFs → applications and extensions
+</code></pre>
+
+<h2 id="section-2">2. Different strengths of evidence</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Claim</th>
+<th>Evidence</th>
+<th>Use in this report</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Omega's goals and stated development stage</td>
+<td>S01 author article</td>
+<td>Author statement, not a performance proof or full current-product audit</td>
+</tr>
+<tr>
+<td>UGFs differ from exact distance</td>
+<td>S02–S05 and mathematical examples here</td>
+<td>Source concepts, independently computed examples</td>
+</tr>
+<tr>
+<td>Useful local pruning/compilation implementations</td>
+<td>S10–S14</td>
+<td>Technical foundation; no transfer of rendering speedup factors to transport</td>
+</tr>
+<tr>
+<td>Simple gradient normalization does not ensure safe stepping</td>
+<td>S13 motivation and independent counterexample</td>
+<td>The x²−1 example refutes a general claim; no claim to complete another source's theorem</td>
+</tr>
+<tr>
+<td>Distance fields have accelerated nuclear tracking</td>
+<td>S24 conference methods and journal record</td>
+<td>Avoid “first SDF in nuclear engineering” claims</td>
+</tr>
+<tr>
+<td>OpenMC already uses implicit CSG</td>
+<td>S25–S27</td>
+<td>Contributions concern complex fields/reliable queries</td>
+</tr>
+<tr>
+<td>OpenMOC supports 3D</td>
+<td>S30–S32</td>
+<td>State mode-specific assumptions; proposed changes are unimplemented</td>
+</tr>
+<tr>
+<td>Random Ray is an extension comparison</td>
+<td>S33–S34</td>
+<td>Existing method established; new-backend compatibility unverified</td>
+</tr>
+<tr>
+<td>Deformation effects merit research</td>
+<td>Visible S35–S37 abstracts/methods and bibliographies</td>
+<td>Do not treat all numerical results of partially accessible papers as checked</td>
+</tr>
+<tr>
+<td>Directions, interfaces, schedules, thresholds</td>
+<td>This report's synthesis</td>
+<td>Proposals, not achievements in cited literature</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="section-3">3. Individual sources</h2>
+
+<p>Links point to original authors, institutions, publishers, projects, or official documentation. Some DOI links failed in the original review but remain for manual lookup. Each entry states its reading scope.</p>
+
+<h3>S01 · Blake Courter. Geometry as Code. 2026-02-07</h3>
+
+<p><a href="https://www.blakecourter.com/2026/02/07/geometry-as-code.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Webpage body</li>
+<li>Relationship and use: User-specified; Omega's positioning, technical relationships, and early stage. An authorial research vision, not transport validation.</li>
+</ul>
+
+<h3>S02 · Blake Courter. Unit Gradient Fields: SDFs, UGFs, and their friends. 2023-05-18</h3>
+
+<p><a href="https://www.blakecourter.com/2023/05/18/field-notation.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Webpage body</li>
+<li>Relationship and use: User-specified; field classification, boundary maps, and Booleans. Rigorous mathematical conditions require supplementation.</li>
+</ul>
+
+<h3>S03 · Blake Courter. What do we mean by offset? 2023-05-05</h3>
+
+<p><a href="https://www.blakecourter.com/2023/05/05/what-is-offset.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant webpage sections</li>
+<li>Relationship and use: Predecessor to S02; equidistant geometric offsets versus different corner-treatment intentions.</li>
+</ul>
+
+<h3>S04 · Blake Courter. The Two-Body Field, Ξ. 2023-07-01</h3>
+
+<p><a href="https://www.blakecourter.com/2023/07/01/two-body-field.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Webpage body</li>
+<li>Relationship and use: Later article in the S02 series; gaps, middle surfaces, and two-body fields.</li>
+</ul>
+
+<h3>S05 · Luo H, Wang X, Lukens B. Variational Analysis on the Signed Distance Functions. JOTA 180:751–774, 2019</h3>
+
+<p><a href="https://link.springer.com/article/10.1007/s10957-018-1414-2">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publication metadata and abstract; paywalled full text unavailable in the original review</li>
+<li>Relationship and use: Cited by S02; online in 2018, volume publication in 2019. Identifies rigorous analysis literature; the abstract does not establish verification of every theorem.</li>
+</ul>
+
+<h3>S06 · Shapiro V. Semi-analytic geometry with R-functions. Acta Numerica 16:239–303, 2007</h3>
+
+<p><a href="https://doi.org/10.1017/S096249290631001X">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publisher abstract and metadata; full text unavailable</li>
+<li>Relationship and use: Cited by S02; logic-preserving implicit constructions are established prior work.</li>
+</ul>
+
+<h3>S07 · Mercury / hg_sdf. A GLSL library for building signed distance functions</h3>
+
+<p><a href="https://mercury.sexy/hg_sdf/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Project description and operator examples</li>
+<li>Relationship and use: Cited by S02; emphasizes distance bounds and Lipschitz conditions.</li>
+</ul>
+
+<h3>S08 · Sampson 1982 (DOI supplied by S02)</h3>
+
+<p><a href="https://doi.org/10.1016/0146-664X(82)90101-0">Original source</a></p>
+
+<ul>
+<li>Reading scope: Original link failed; only the formula restated by S02 was read</li>
+<li>Relationship and use: Unavailable originals are not counted as read. The normalization counterexample is independently derived here.</li>
+</ul>
+
+<h3>S09 · Inigo Quilez. Smooth minimum</h3>
+
+<p><a href="https://iquilezles.org/articles/smin/">Original source</a></p>
+
+<ul>
+<li>Reading scope: HTTP 403; only the citation relationship in S02 was checked</li>
+<li>Relationship and use: No claim to have read the original. Analysis of geometry-changing smooth Booleans uses mathematical definitions rather than inaccessible page details.</li>
+</ul>
+
+<h3>S10 · Matt Keeter. Fidget project description</h3>
+
+<p><a href="https://www.mattkeeter.com/projects/fidget/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Project sections on expressions, evaluation, intervals, pruning, and JIT</li>
+<li>Relationship and use: Directly cited by S01; reusable expression-evaluation techniques.</li>
+</ul>
+
+<h3>S11 · mkeeter/fidget official repository README</h3>
+
+<p><a href="https://github.com/mkeeter/fidget">Original source</a></p>
+
+<ul>
+<li>Reading scope: Public README at the original review date; no build/run</li>
+<li>Relationship and use: Confirms native CPU evaluation, research status, and dependency risk. Pin a version before execution.</li>
+</ul>
+
+<h3>S12 · Keeter M J. Massively Parallel Rendering of Complex Closed-Form Implicit Surfaces. ACM TOG 39(4), Article 141, 2020</h3>
+
+<p><a href="https://www.mattkeeter.com/research/mpr/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author project page and relevant preprint methods sections</li>
+<li>Relationship and use: Fidget background: GPU hierarchical interval evaluation and expression pruning. Preprint: <a href="https://www.mattkeeter.com/research/mpr/keeter_mpr20.pdf">https://www.mattkeeter.com/research/mpr/keeter_mpr20.pdf</a> .</li>
+</ul>
+
+<h3>S13 · Matt Keeter. Gradients are the new intervals. 2025-05-14</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2025-05-14-gradients/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Blog body including normalization and performance</li>
+<li>Relationship and use: Intervals, Lipschitz ball bounds, and normalization failure; practical observations are not safety theorems for arbitrary fields.</li>
+</ul>
+
+<h3>S14 · Barbier W, Sanchez M, Paris A, et al. Lipschitz Pruning: Hierarchical Simplification of Primitive-Based SDFs. 2025</h3>
+
+<p><a href="https://doi.org/10.1111/cgf.70057">Original source</a></p>
+
+<ul>
+<li>Reading scope: Adobe project abstract, visible publisher methods, author repository</li>
+<li>Relationship and use: Cited by S13. Adobe: <a href="https://research.adobe.com/publication/lipschitz-pruning-hierarchical-simplification-of-primitive-based-sdfs/">https://research.adobe.com/publication/lipschitz-pruning-hierarchical-simplification-of-primitive-based-sdfs/</a> ; implementation: <a href="https://github.com/wbrbr/LipschitzPruning">https://github.com/wbrbr/LipschitzPruning</a> .</li>
+</ul>
+
+<h3>S15 · Matt Keeter. A cautionary tale about continuity. 2025-04-12</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2025-04-12-continuity/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Blog body</li>
+<li>Relationship and use: Periodic modulo can change signs across a discontinuity without passing through zero.</li>
+</ul>
+
+<h3>S16 · Matt Keeter. Zero-crossing logic for robust meshing. 2017-05-13</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2017-05-13-implicit-zeros/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant blog logic sections</li>
+<li>Relationship and use: Contact, complements, and zero ownership; reinterpret meshing rules as transport-event semantics.</li>
+</ul>
+
+<h3>S17 · Matt Keeter. Finding bounding boxes with interval math. 2017-09-29</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2017-09-29-bounds/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Blog body</li>
+<li>Relationship and use: Interval dependency loosens bounding boxes; automatic bounds are not necessarily efficient.</li>
+</ul>
+
+<h3>S18 · Matt Keeter. A simple adversarial model for dual contouring. 2023-04-23</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2023-04-23-adversarial/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Blog body</li>
+<li>Relationship and use: Escaped QEF vertices and scale-invariant counterexamples illustrate mesh-reference limitations.</li>
+</ul>
+
+<h3>S19 · Matt Keeter. Please Steal my Meshing Algorithm Idea. 2026-07-03</h3>
+
+<p><a href="https://www.mattkeeter.com/blog/2026-07-03-meshing/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Blog body and follow-up reference entry points</li>
+<li>Relationship and use: Explicitly unimplemented algorithm idea; not a mature intersection-free meshing backend.</li>
+</ul>
+
+<h3>S20 · Sawhney R, Miller B, Gkioulekas I, Crane K. Walk on Stars. SIGGRAPH 2023</h3>
+
+<p><a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author project page and abstract</li>
+<li>Relationship and use: The actual Monte Carlo techniques link in S01; elliptic PDEs, not directly neutron Boltzmann transport.</li>
+</ul>
+
+<h3>S21 · Intact Solutions official website</h3>
+
+<p><a href="https://intact-solutions.com/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Product-homepage positioning</li>
+<li>Relationship and use: The quadrature link in S01; background on implicit geometry analysis, not evidence of neutron-transport capability.</li>
+</ul>
+
+<h3>S22 · Hart J C. Sphere tracing: A geometric method for the antialiased ray tracing of implicit surfaces. The Visual Computer 12(10):527–545, 1996</h3>
+
+<p><a href="https://experts.illinois.edu/en/publications/sphere-tracing-a-geometric-method-for-the-antialiased-ray-tracing/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author-institution abstract and bibliographic record</li>
+<li>Relationship and use: Safe-stepping prior work; DOI: 10.1007/s003710050084. Conditions and formulas are explicitly derived in this report.</li>
+</ul>
+
+<h3>S23 · Galin E, Guérin E, Paris A, Peytavie A. Segment Tracing Using Local Lipschitz Bounds. CGF 39(2):545–554, 2020</h3>
+
+<p><a href="https://doi.org/10.1111/cgf.13951">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publisher abstract, author project page, and public-paper entry</li>
+<li>Relationship and use: Local segment Lipschitz bounds. Author page: <a href="https://perso.liris.cnrs.fr/apeytavi/website/publication/hal-02507361/">https://perso.liris.cnrs.fr/apeytavi/website/publication/hal-02507361/</a> .</li>
+</ul>
+
+<h3>S24 · Shriwise P C, Davis A, Jacobson L J, Wilson P P H. Particle Tracking Acceleration via Signed Distance Fields in DAGMC. M&amp;C 2017</h3>
+
+<p><a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant public conference-paper methods; journal search excerpts cross-checked</li>
+<li>Relationship and use: Prior nuclear-engineering geometry prefiltering. Journal version: NET 49:1189–1198, DOI: 10.1016/j.net.2017.08.008. Do not mix the versions' page numbers.</li>
+</ul>
+
+<h3>S25 · OpenMC. Theory and Methodology: Geometry</h3>
+
+<p><a href="https://docs.openmc.org/en/stable/methods/geometry.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Official documentation</li>
+<li>Relationship and use: CSG, surfaces, universes/lattices, nearest boundaries, and boundary conditions.</li>
+</ul>
+
+<h3>S26 · OpenMC source: include/openmc/surface.h</h3>
+
+<p><a href="https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h">Original source</a></p>
+
+<ul>
+<li>Reading scope: Public develop-branch interfaces; read-only</li>
+<li>Relationship and use: evaluate / distance / normal; corresponding raw path inspected. Point-in-time observation without a pinned commit or compilation.</li>
+</ul>
+
+<h3>S27 · OpenMC source: src/geometry.cpp</h3>
+
+<p><a href="https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant develop-branch code including distance_to_boundary; read-only</li>
+<li>Relationship and use: Geometry hierarchy and lattice boundaries; corresponding raw path inspected. Not a complete source audit.</li>
+</ul>
+
+<h3>S28 · OpenMC. openmc.DAGMCUniverse</h3>
+
+<p><a href="https://docs.openmc.org/en/stable/pythonapi/generated/openmc.DAGMCUniverse.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Official API documentation</li>
+<li>Relationship and use: DAGMC integration baseline, not a ready-made adapter for arbitrary programmatic implicit fields.</li>
+</ul>
+
+<h3>S29 · OpenMOC. Method of Characteristics</h3>
+
+<p><a href="https://mit-crpg.github.io/OpenMOC/methods/method_of_characteristics.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Official methods documentation</li>
+<li>Relationship and use: Characteristic equations, flat-source regions, and track integration; this theory page mainly derives the 2D case.</li>
+</ul>
+
+<h3>S30 · OpenMOC. Writing Python Input Files, §3.6.1 3D Track Generation</h3>
+
+<p><a href="https://mit-crpg.github.io/OpenMOC/usersguide/input.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant official user-guide sections</li>
+<li>Relationship and use: TrackGenerator3D and OTF_STACKS; OpenMOC is not limited to 2D.</li>
+</ul>
+
+<h3>S31 · OpenMOC source: src/Geometry.cpp</h3>
+
+<p><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant develop-branch segmentize3D/FSR code; read-only</li>
+<li>Relationship and use: Candidate direct-3D-segmentation entry; corresponding raw path inspected without build/run.</li>
+</ul>
+
+<h3>S32 · OpenMOC source: src/TrackGenerator3D.cpp</h3>
+
+<p><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp">Original source</a></p>
+
+<ul>
+<li>Reading scope: Develop-branch construction and segmentizeExtruded code; read-only</li>
+<li>Relationship and use: Distinguishes explicit 3D and extruded-region OTF paths; continuous twisting is not supported automatically by every mode.</li>
+</ul>
+
+<h3>S33 · OpenMC. Theory and Methodology: Random Ray</h3>
+
+<p><a href="https://docs.openmc.org/en/stable/methods/random_ray.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant official methods sections</li>
+<li>Relationship and use: Multigroup random characteristics and their relation to MOC; not continuous-energy MC.</li>
+</ul>
+
+<h3>S34 · OpenMC. Random Ray Solver</h3>
+
+<p><a href="https://docs.openmc.org/en/stable/usersguide/random_ray.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Relevant official user-guide sections</li>
+<li>Relationship and use: Source-region meshes and linear sources; implicit-backend compatibility remains to be validated.</li>
+</ul>
+
+<h3>S35 · de Lambert S, et al. Modeling the consequences of fuel assembly bowing on PWR core neutronics using a Monte-Carlo code. ANE 134:330–341, 2019</h3>
+
+<p><a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454919303342">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publisher abstract and visible methods excerpts; no full text</li>
+<li>Relationship and use: Bowing approximations using stacked/rotated segments versus analytic references. DOI: 10.1016/j.anucene.2019.06.017.</li>
+</ul>
+
+<h3>S36 · Zou H, et al. Investigation on the modeling capability of ALPHA code for fuel rod deformation. ANE 169:108892, 2022</h3>
+
+<p><a href="https://www.sciencedirect.com/science/article/abs/pii/S0306454921007696">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publisher search abstract/excerpts; direct access returned 403; no full text</li>
+<li>Relationship and use: Tilt, C-shaped bowing, swelling, and MOC-EX/mesh mapping. DOI: 10.1016/j.anucene.2021.108892.</li>
+</ul>
+
+<h3>S37 · Song Q, Wang R, Guo H, Gu H. MC/MOC two-step method for reactor physics analysis of helical cruciform fuel reactor. PNE 180:105607, 2025</h3>
+
+<p><a href="https://www.sciencedirect.com/science/article/pii/S0149197025000058">Original source</a></p>
+
+<ul>
+<li>Reading scope: Publisher search excerpts and author-affiliation bibliography; no full text</li>
+<li>Relationship and use: DOI: 10.1016/j.pnucene.2025.105607. Affiliation confirmation: <a href="https://me.sjtu.edu.cn/en/FullTimeTeacher/guohui.html">https://me.sjtu.edu.cn/en/FullTimeTeacher/guohui.html</a> . Numerical performance not independently checked is not restated.</li>
+</ul>
+
+<h3>S38 · Vicini D, Speierer S, Jakob W. Differentiable Signed Distance Function Rendering. SIGGRAPH 2022</h3>
+
+<p><a href="https://rgl.epfl.ch/publications/Vicini2022SDF">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author project page and abstract</li>
+<li>Relationship and use: Boundary/visibility discontinuities need special derivative treatment; transport adaptation is a proposal.</li>
+</ul>
+
+<h3>S39 · OpenMOC. Track Generation</h3>
+
+<p><a href="https://mit-crpg.github.io/OpenMOC/methods/track_generation.html">Original source</a></p>
+
+<ul>
+<li>Reading scope: Official methods documentation</li>
+<li>Relationship and use: Cyclic tracks, reflective connections, and angular/spacing constraints.</li>
+</ul>
+
+<h3>S40 · Subgrid Marching Tetrahedra</h3>
+
+<p><a href="https://markjgillespie.com/Research/SubgridMarchingTets/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author project entry opened; extension reading only</li>
+<li>Relationship and use: 2026 reference from S19; multiple intersections and thin-feature methods require further review, not treated as validated here.</li>
+</ul>
+
+<h3>S41 · ADS: Random Sampling of Occupancy Functions using Adaptive Delaunay Scaffolding</h3>
+
+<p><a href="https://www.cs.ubc.ca/labs/imager/tr/2026/ads/">Original source</a></p>
+
+<ul>
+<li>Reading scope: Author project entry opened; extension reading only</li>
+<li>Relationship and use: 2026 work mentioned in S19 updates; distinguish occupancy functions from distance fields.</li>
+</ul>
+
+<h2 id="section-4">4. Use of existing local materials</h2>
+
+<p>Existing notes were inspected read-only during the original review to identify background and avoid duplicate topics:</p>
+
+<ul>
+<li>
+<a href="grant-proposal-analysis.html">Grant-proposal analysis</a>: problem structure and literature leads; key external claims were checked against primary sources.</li>
+<li>
+<a href="../literature/notes/dagmc-sdf-particle-tracking.html">DAGMC-SDF notes</a>: conference/journal distinction; public conference methods were read separately.</li>
+<li>
+<a href="../literature/notes/ray-tracing-sdf-grids.html">SDF-grid ray-tracing notes</a>: outline and references only in the original review. The JCGT 2022 webpage had no extractable body and its PDF was not read then due to size limits, so its full text was not treated as a core reviewed source.</li>
+</ul>
+
+<p>The original review did not re-extract every local PDF or the full application, did not report earlier demo results as new measurements, and did not modify existing files. The later workspace organization translates and relocates these materials without changing that historical reading scope.</p>
+
+<h2 id="section-5">5. Evidence gaps before formal project approval</h2>
+
+<ol>
+<li>Obtain full Luo, Shapiro, and deformation-neutronics texts to check theorem assumptions, references, and reproducible setups. Sampson and Quilez originals were inaccessible in the original review and require legitimate access. The Luo PDF is now available in this collection; the earlier source record remains historical.</li>
+<li>Pin OpenMC, OpenMOC, and Fidget releases/commits. Point-in-time <code>develop</code> observations and <code>stable</code> documentation do not establish a validated software combination.</li>
+<li>The review covered interfaces/key functions, not full call graphs. Trace OpenMC event insertion/restart serialization and non-extruded compatibility of each OpenMOC OTF mode during implementation.</li>
+<li>Continue searches for material-labeled implicit geometry, interval all-intersection tracking, deformation MC/MOC, shape derivatives, and multigroup errors before bounded novelty claims.</li>
+<li>S40/S41 are only 2026 further-reading entries; titles/links do not establish mastery or reuse of their algorithms.</li>
+<li>Omega descriptions rely on S01; unpublished code, collaboration interfaces, and complete language specifications were not obtained and are not prerequisites.</li>
+</ol>
+
+<p>See <a href="../../catalog/sources.html">sources.json</a> for machine-readable records. Dates indicate original access/review, not publication dates for every page.</p>
+
+    </main>
+  </body>
+</html>

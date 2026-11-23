@@ -1,0 +1,21 @@
+test_bvh_nearest_and_ray_against_brute_force (test_algorithms.GeometryTests) ... ok
+test_oriented_cube_and_cavity_signed_samples (test_algorithms.GeometryTests) ... ok
+test_sphere_and_shell_first_roots (test_algorithms.GeometryTests) ... ok
+test_triangle_face_edge_vertex_and_ray (test_algorithms.GeometryTests) ... ok
+test_error_intervals_include_nonsmooth_true_sdf (test_algorithms.GridTests) ... ok
+test_invalid_domain_and_unknown_error_mode (test_algorithms.GridTests) ... ok
+test_multilinear_exactness_and_grid_boundary (test_algorithms.GridTests) ... ok
+test_node_errors_are_added_to_interpolation_bound (test_algorithms.GridTests) ... ok
+test_containment_fallback_and_exact_distance_contract (test_algorithms.PrefilterTests) ... ok
+test_mesh_prefilter_returns_same_crossing_as_mesh_oracle (test_algorithms.PrefilterTests) ... ok
+test_no_skipped_ray_crosses_sphere_or_shell (test_algorithms.PrefilterTests) ... ok
+test_nonconvex_endpoints_inside_are_not_a_certificate (test_algorithms.PrefilterTests) ... ok
+test_paired_random_walk_matches_baseline (test_algorithms.PrefilterTests) ... ok
+test_exponential_formula_against_independent_quadrature (test_algorithms.TheoryTests) ... ok
+test_fixed_model_against_uniform_volume_sampling (test_algorithms.TheoryTests) ... ok
+test_fixed_utilization_and_alpha_domain (test_algorithms.TheoryTests) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 1.039s
+
+OK

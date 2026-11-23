@@ -1,0 +1,2 @@
+# Optional: the numerical demo and unittest suite use only the standard library.
+matplotlib>=3.6

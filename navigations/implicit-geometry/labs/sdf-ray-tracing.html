@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDF 网格射线追踪：遍历、根与法线 | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>SDF 网格射线追踪：遍历、根与法线</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">怎样读这套代码</a></li>
+  <li><a href="#section-2">运行与测试</a></li>
+  <li><a href="#section-3">归档实验 · output</a></li>
+  <li><a href="#section-4">归档实验 · output-quantized</a></li>
+</ul>
+</details>
+<h2 id="section-1">怎样读这套代码</h2>
+
+<ul>
+  <li>从 sdf_grid.py 中的 cubic_coefficients 开始，把光线代入三线性插值，再看 first_root 如何挑选区间内的第一个根。</li>
+  <li>在 Grid.trace 中固定局部求根器切换遍历结构，再固定遍历结构切换求根器，分别观察时间与最大命中偏差。</li>
+  <li>对照普通与量化报告。先比较同一重建场上的求交，再讨论量化对形状本身的影响。</li>
+</ul>
+<h2 id="section-2">运行与测试</h2>
+
+<p>下载并解压代码包，在解压出的项目目录运行下列命令。第二条命令把新结果写入独立目录。</p>
+
+<pre><code>python3 -m unittest -v
+python3 demo.py --output study-output</code></pre>
+
+<ul>
+  <li><a href="../notes/demos/sdf-ray-tracing/README.html">完整实验指南和参数</a></li>
+  <li><a href="../downloads/sdf-ray-tracing.zip">下载可运行的 Python 代码包</a></li>
+  <li><a href="../code/sdf-ray-tracing/demo.html">demo.py</a></li>
+  <li><a href="../code/sdf-ray-tracing/sdf_grid.html">sdf_grid.py</a></li>
+  <li><a href="../code/sdf-ray-tracing/test_algorithms.html">test_algorithms.py</a></li>
+</ul>
+<h2 id="section-3">归档实验 · output</h2>
+
+<ul>
+  <li><a href="../notes/demos/sdf-ray-tracing/output/run-report.html">阅读运行报告与结果表</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/analytic.png">analytic.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/benchmark.csv">benchmark.csv</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/comparison.png">comparison.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/comparison.svg">comparison.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/cubic.svg">cubic.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/metrics.json">metrics.json</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/normal-continuity.svg">normal-continuity.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/smooth.png">smooth.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output/tetra.png">tetra.png</a></li>
+</ul>
+<h2 id="section-4">归档实验 · output-quantized</h2>
+
+<ul>
+  <li><a href="../notes/demos/sdf-ray-tracing/output-quantized/run-report.html">阅读运行报告与结果表</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/analytic.png">analytic.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/benchmark.csv">benchmark.csv</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/comparison.png">comparison.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/comparison.svg">comparison.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/cubic.svg">cubic.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/metrics.json">metrics.json</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/normal-continuity.svg">normal-continuity.svg</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/smooth.png">smooth.png</a></li>
+  <li><a href="../resources/sdf-ray-tracing/output-quantized/tetra.png">tetra.png</a></li>
+</ul>
+    </main>
+  </body>
+</html>

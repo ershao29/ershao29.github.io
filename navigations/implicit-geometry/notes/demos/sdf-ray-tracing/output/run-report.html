@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDF-grid ray tracing · floating-point results | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../../index.html">Home</a> / <a href="../../../../../projects.html">Projects</a> / <a href="../../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>SDF-grid ray tracing · floating-point results</h1>
+        <a href="../../../../labs/sdf-ray-tracing.html">实验导航、源码与下载</a>
+      </header>
+<p>Timings vary with machine load; these results compare correctness and do not predict GPU performance.</p>
+
+<ul>
+<li>Grid: 16³ voxels; nonempty voxels: 352; bricks: 12.</li>
+<li>Python: 3.9.6; quantized: False; random rays: 1000.</li>
+</ul>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Traversal</th>
+<th>Voxel intersection</th>
+<th align="right">Seconds</th>
+<th align="right">Hit mismatches</th>
+<th align="right">Maximum t difference</th>
+<th align="right">Exhaustion count</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GST</td>
+<td>GST</td>
+<td align="right">0.2940</td>
+<td align="right">0</td>
+<td align="right">2.13e-05</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>GST</td>
+<td>ST</td>
+<td align="right">0.1313</td>
+<td align="right">0</td>
+<td align="right">2.78e-08</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>GST</td>
+<td>A</td>
+<td align="right">0.1317</td>
+<td align="right">0</td>
+<td align="right">3.55e-15</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>GST</td>
+<td>M</td>
+<td align="right">0.1332</td>
+<td align="right">0</td>
+<td align="right">6.76e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>GST</td>
+<td>NR</td>
+<td align="right">0.1327</td>
+<td align="right">0</td>
+<td align="right">5.17e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVS</td>
+<td>ST</td>
+<td align="right">0.0793</td>
+<td align="right">0</td>
+<td align="right">2.78e-08</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVS</td>
+<td>A</td>
+<td align="right">0.0800</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVS</td>
+<td>M</td>
+<td align="right">0.0815</td>
+<td align="right">0</td>
+<td align="right">6.76e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVS</td>
+<td>NR</td>
+<td align="right">0.0802</td>
+<td align="right">0</td>
+<td align="right">5.17e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SBS</td>
+<td>ST</td>
+<td align="right">0.1003</td>
+<td align="right">0</td>
+<td align="right">2.78e-08</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SBS</td>
+<td>A</td>
+<td align="right">0.1029</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SBS</td>
+<td>M</td>
+<td align="right">0.1045</td>
+<td align="right">0</td>
+<td align="right">6.76e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SBS</td>
+<td>NR</td>
+<td align="right">0.1039</td>
+<td align="right">0</td>
+<td align="right">5.17e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVO</td>
+<td>ST</td>
+<td align="right">0.0744</td>
+<td align="right">0</td>
+<td align="right">2.78e-08</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVO</td>
+<td>A</td>
+<td align="right">0.0746</td>
+<td align="right">0</td>
+<td align="right">0</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVO</td>
+<td>M</td>
+<td align="right">0.0765</td>
+<td align="right">0</td>
+<td align="right">6.76e-13</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td>SVO</td>
+<td>NR</td>
+<td align="right">0.0755</td>
+<td align="right">0</td>
+<td align="right">5.17e-13</td>
+<td align="right">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The reference is DDA+A on the same trilinear field. Finite ST/GST budgets and thresholds introduce approximation errors; exhausted counts individual local-solver or traversal budget limits.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Shadow optimization</th>
+<th align="right">Occluded rays</th>
+<th align="right">Root iterations</th>
+<th align="right">Early exits</th>
+<th align="right">Seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>False</td>
+<td align="right">171</td>
+<td align="right">589</td>
+<td align="right">0</td>
+<td align="right">0.0284</td>
+</tr>
+<tr>
+<td>True</td>
+<td align="right">171</td>
+<td align="right">0</td>
+<td align="right">171</td>
+<td align="right">0.0261</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Shadow Boolean mismatches: 0.</p>
+
+<p><img src="../../../../resources/sdf-ray-tracing/output/comparison.png" alt="Left: analytic; middle: tetrahedral differences; right: continuous normals" loading="lazy"></p>
+
+<p><img src="../../../../resources/sdf-ray-tracing/output/cubic.svg" alt="Derivative partition" loading="lazy"></p>
+
+<p><img src="../../../../resources/sdf-ray-tracing/output/normal-continuity.svg" alt="Normal continuity" loading="lazy"></p>
+
+    </main>
+  </body>
+</html>

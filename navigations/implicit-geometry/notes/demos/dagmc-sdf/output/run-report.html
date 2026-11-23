@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DAGMC-SDF Teaching Demo Run Report | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../../index.html">Home</a> / <a href="../../../../../projects.html">Projects</a> / <a href="../../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>DAGMC-SDF Teaching Demo Run Report</h1>
+        <a href="../../../../labs/dagmc-sdf.html">实验导航、源码与下载</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Query and Event Correctness</a></li>
+  <li><a href="#section-2">Triangle and Analytic Geometry Query Benchmarks</a></li>
+  <li><a href="#section-3">Random Walks</a></li>
+  <li><a href="#section-4">Plots</a></li>
+</ul>
+</details>
+<p>Environment: Python 3.9.6; macOS-15.4.1-arm64-arm-64bit. Seed 20170417.</p>
+
+<p>Numerical and timing results are from an independent Python teaching implementation; no DAGMC/MCNP transport was run.</p>
+
+<h2 id="section-1">Query and Event Correctness</h2>
+
+<ul>
+<li>Geometry query contract mismatches: 0.</li>
+<li>Benchmark event-decision mismatches: 0.</li>
+<li>Distance-field error-bound violations: 0.</li>
+<li>All paired random walks match baseline collision counts and path lengths history by history.</li>
+</ul>
+
+<h2 id="section-2">Triangle and Analytic Geometry Query Benchmarks</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Geometry</th>
+<th>Mode</th>
+<th>Error bound</th>
+<th align="right">Events</th>
+<th align="right">Avoided-ray fraction</th>
+<th align="right">Ray calls</th>
+<th align="right">Triangle tests</th>
+<th align="right">Seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>analytic_sphere</td>
+<td>baseline</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.000</td>
+<td align="right">5000</td>
+<td align="right">0</td>
+<td align="right">0.0172</td>
+</tr>
+<tr>
+<td>analytic_sphere</td>
+<td>single</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.201</td>
+<td align="right">3997</td>
+<td align="right">0</td>
+<td align="right">0.0606</td>
+</tr>
+<tr>
+<td>analytic_sphere</td>
+<td>pair</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.252</td>
+<td align="right">3738</td>
+<td align="right">0</td>
+<td align="right">0.0975</td>
+</tr>
+<tr>
+<td>analytic_sphere</td>
+<td>pair</td>
+<td>rms</td>
+<td align="right">5000</td>
+<td align="right">0.527</td>
+<td align="right">2367</td>
+<td align="right">0</td>
+<td align="right">0.0994</td>
+</tr>
+<tr>
+<td>analytic_shell</td>
+<td>baseline</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.000</td>
+<td align="right">5000</td>
+<td align="right">0</td>
+<td align="right">0.0252</td>
+</tr>
+<tr>
+<td>analytic_shell</td>
+<td>single</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.003</td>
+<td align="right">4985</td>
+<td align="right">0</td>
+<td align="right">0.0700</td>
+</tr>
+<tr>
+<td>analytic_shell</td>
+<td>pair</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.005</td>
+<td align="right">4976</td>
+<td align="right">0</td>
+<td align="right">0.1071</td>
+</tr>
+<tr>
+<td>analytic_shell</td>
+<td>pair</td>
+<td>rms</td>
+<td align="right">5000</td>
+<td align="right">0.409</td>
+<td align="right">2954</td>
+<td align="right">0</td>
+<td align="right">0.1052</td>
+</tr>
+<tr>
+<td>triangle_sphere_128</td>
+<td>baseline</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.000</td>
+<td align="right">5000</td>
+<td align="right">21492</td>
+<td align="right">0.2040</td>
+</tr>
+<tr>
+<td>triangle_sphere_128</td>
+<td>single</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.186</td>
+<td align="right">4071</td>
+<td align="right">20212</td>
+<td align="right">0.2257</td>
+</tr>
+<tr>
+<td>triangle_sphere_128</td>
+<td>pair</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.234</td>
+<td align="right">3829</td>
+<td align="right">19524</td>
+<td align="right">0.2545</td>
+</tr>
+<tr>
+<td>triangle_sphere_128</td>
+<td>pair</td>
+<td>rms</td>
+<td align="right">5000</td>
+<td align="right">0.511</td>
+<td align="right">2447</td>
+<td align="right">13812</td>
+<td align="right">0.2072</td>
+</tr>
+<tr>
+<td>triangle_sphere_512</td>
+<td>baseline</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.000</td>
+<td align="right">5000</td>
+<td align="right">16848</td>
+<td align="right">0.2186</td>
+</tr>
+<tr>
+<td>triangle_sphere_512</td>
+<td>single</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.200</td>
+<td align="right">4001</td>
+<td align="right">16844</td>
+<td align="right">0.2420</td>
+</tr>
+<tr>
+<td>triangle_sphere_512</td>
+<td>pair</td>
+<td>paper</td>
+<td align="right">5000</td>
+<td align="right">0.258</td>
+<td align="right">3709</td>
+<td align="right">16832</td>
+<td align="right">0.2718</td>
+</tr>
+<tr>
+<td>triangle_sphere_512</td>
+<td>pair</td>
+<td>rms</td>
+<td align="right">5000</td>
+<td align="right">0.535</td>
+<td align="right">2327</td>
+<td align="right">15080</td>
+<td align="right">0.2339</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Timings exclude grid construction and input sampling; build costs are listed separately.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Geometry</th>
+<th align="right">Triangles</th>
+<th align="right">Grid nodes</th>
+<th align="right">Value bytes</th>
+<th align="right">Build seconds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>analytic_sphere</td>
+<td align="right">0</td>
+<td align="right">2197</td>
+<td align="right">17576</td>
+<td align="right">0.0034</td>
+</tr>
+<tr>
+<td>analytic_shell</td>
+<td align="right">0</td>
+<td align="right">2197</td>
+<td align="right">17576</td>
+<td align="right">0.0037</td>
+</tr>
+<tr>
+<td>triangle_sphere_128</td>
+<td align="right">128</td>
+<td align="right">2197</td>
+<td align="right">17576</td>
+<td align="right">0.7414</td>
+</tr>
+<tr>
+<td>triangle_sphere_512</td>
+<td align="right">512</td>
+<td align="right">2197</td>
+<td align="right">17576</td>
+<td align="right">1.2999</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Value bytes count only float64 field storage, excluding BVHs, Python objects, and metadata.</p>
+
+<h2 id="section-3">Random Walks</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Mean free path/R</th>
+<th>Error bound</th>
+<th align="right">Histories</th>
+<th align="right">Collisions</th>
+<th align="right">Escapes</th>
+<th align="right">Capped</th>
+<th align="right">Avoided-ray fraction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0.05</td>
+<td>paper</td>
+<td align="right">200</td>
+<td align="right">15785</td>
+<td align="right">185</td>
+<td align="right">15</td>
+<td align="right">0.678</td>
+</tr>
+<tr>
+<td>0.05</td>
+<td>rms</td>
+<td align="right">200</td>
+<td align="right">15785</td>
+<td align="right">185</td>
+<td align="right">15</td>
+<td align="right">0.876</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>paper</td>
+<td align="right">200</td>
+<td align="right">2574</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.536</td>
+</tr>
+<tr>
+<td>0.15</td>
+<td>rms</td>
+<td align="right">200</td>
+<td align="right">2574</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.743</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>paper</td>
+<td align="right">200</td>
+<td align="right">447</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.295</td>
+</tr>
+<tr>
+<td>0.50</td>
+<td>rms</td>
+<td align="right">200</td>
+<td align="right">447</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.413</td>
+</tr>
+<tr>
+<td>1.00</td>
+<td>paper</td>
+<td align="right">200</td>
+<td align="right">191</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.166</td>
+</tr>
+<tr>
+<td>1.00</td>
+<td>rms</td>
+<td align="right">200</td>
+<td align="right">191</td>
+<td align="right">200</td>
+<td align="right">0</td>
+<td align="right">0.281</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code>capped</code> counts histories reaching the collision limit; these are retained and are not escapes.</p>
+
+<p>See <code>metrics.json</code> for configuration, error checks, and the nonconvex example. <code>utilization.csv</code> uses independent uniform-volume samples;
+that utilization model does not directly describe subsequent nonuniform collision positions in random walks.</p>
+
+<h2 id="section-4">Plots</h2>
+
+<p>Run <code>python3 plot_results.py --output output</code> for utilization, distance-field, and prefilter diagrams.</p>
+
+    </main>
+  </body>
+</html>

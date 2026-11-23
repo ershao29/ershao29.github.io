@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Implicit Geometry | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../index.html">Home</a> / <a href="../projects.html">Projects</a></nav>
+      <header>
+        <h1>Implicit Geometry</h1>
+        <p>从有符号距离的定义出发，沿着距离场构造、射线求交和材料跟踪读到三维输运。下列 8 篇论文各有中文逐章解读、总结与展望；两套 Python 实验提供完整源码、运行步骤和归档结果。</p>
+
+      </header>
+      <nav class="jump-links" aria-label="学习目录">
+        <a href="#section-1">逐章解读</a>
+        <a href="#section-2">动手实验</a>
+        <a href="#section-3">研究方案</a>
+        <a href="#section-4">阅读笔记</a>
+        <a href="#section-5">运行报告</a>
+        <a href="#section-6">源码与资料</a>
+      </nav>
+<h2 id="section-1">论文逐章阅读</h2>
+
+<article class="entry"><h3><a href="papers/variational-analysis-signed-distance.html">Variational Analysis on the Signed Distance Functions</a></h3>
+<p>有符号距离、投影与不可微点 · Luo · Wang · Lukens</p>
+</article>
+
+<article class="entry"><h3><a href="papers/adaptive-signed-distance-computation.html">Computation of the Signed Distance Function to a Discrete Contour on Adapted Triangulation</a></h3>
+<p>在非贴体网格上构造距离场 · Dapogny · Frey</p>
+</article>
+
+<article class="entry"><h3><a href="papers/dagmc-sdf-particle-tracking.html">Particle Tracking Acceleration via Signed Distance Fields in DAGMC</a></h3>
+<p>何时可以跳过一次几何求交 · Shriwise · Davis · Jacobson · Wilson</p>
+</article>
+
+<article class="entry"><h3><a href="papers/ray-tracing-signed-distance-grids.html">Ray Tracing of Signed Distance Function Grids</a></h3>
+<p>在三线性体素里寻找第一条有效根 · Hansson-Söderlund · Evans · Akenine-Möller</p>
+</article>
+
+<article class="entry"><h3><a href="papers/improved-ray-casting-procedural-distance-bounds.html">Improved Ray Casting of Procedural Distance Bounds</a></h3>
+<p>保守步长、过松弛与屏幕空间停止条件 · Keinert · Schäfer · Korndörfer · Ganse · Stamminger</p>
+</article>
+
+<article class="entry"><h3><a href="papers/euclidean-distance-mapping.html">Euclidean Distance Mapping</a></h3>
+<p>像素距离、扫描传播与骨架 · Per-Erik Danielsson</p>
+</article>
+
+<article class="entry"><h3><a href="papers/walk-on-stars.html">Walk on Stars: A Grid-Free Monte Carlo Method for PDEs with Neumann Boundary Conditions</a></h3>
+<p>用星形子域处理反射边界 · Sawhney · Miller · Gkioulekas · Crane</p>
+</article>
+
+<article class="entry"><h3><a href="papers/curved-surface-nodal-pde-framework.html">CSN: A generalizable and high-fidelity framework for solving PDEs in complex real-world domains</a></h3>
+<p>将曲面几何与节块内解的近似分开 · Zhou 等 · SSRN 预印本</p>
+</article>
+
+<h2 id="section-2">动手实验</h2>
+
+<ul>
+  <li><a href="labs/dagmc-sdf.html">DAGMC-SDF：安全飞行、回退与查询成本</a></li>
+  <li><a href="labs/sdf-ray-tracing.html">SDF 网格射线追踪：求根、遍历与法线</a></li>
+</ul>
+<h2 id="section-3">研究方案与技术路线</h2>
+
+<ul>
+  <li><a href="notes/research-proposal/README.html">Doctoral Proposal Research Package</a></li>
+  <li><a href="notes/research-proposal/evidence-and-sources.html">Source Index, Citation Relationships, and Evidence Boundaries</a></li>
+  <li><a href="notes/research-proposal/grant-proposal-analysis.html">SDF Modeling for Complex-Core MOC: Grant Proposal Analysis</a></li>
+  <li><a href="notes/research-proposal/research-directions.html">From Geometry as Code to Verifiable Transport Geometry: Research Directions for Complex Reactor Cores</a></li>
+  <li><a href="notes/research-proposal/technical-roadmap.html">Technical Roadmap and Validation Plan</a></li>
+  <li><a href="notes/research-proposal/topic-discussion.html">Research Topics in Implicit Geometry and Neutron Transport</a></li>
+</ul>
+<h2 id="section-4">阅读指南与文献笔记</h2>
+
+<ul>
+  <li><a href="notes/README.html">Doctoral Proposal Reading Guide</a></li>
+  <li><a href="notes/literature/README.html">Literature Catalog</a></li>
+  <li><a href="notes/literature/notes/adaptive-signed-distance-computation.html">Signed Distance Computation on Adapted Triangulations</a></li>
+  <li><a href="notes/literature/notes/dagmc-sdf-particle-tracking.html">DAGMC-SDF Particle Tracking Acceleration</a></li>
+  <li><a href="notes/literature/notes/ray-tracing-sdf-grids.html">Ray Tracing of Signed Distance Function Grids</a></li>
+  <li><a href="notes/literature/notes/supporting-papers.html">Supporting Papers: Proposal Reading Annotations</a></li>
+  <li><a href="notes/literature/notes/variational-analysis-signed-distance.html">Variational Analysis on the Signed Distance Functions</a></li>
+</ul>
+<h2 id="section-5">演示指南与运行报告</h2>
+
+<ul>
+  <li><a href="notes/demos/dagmc-sdf/README.html">DAGMC-SDF Teaching Demo</a></li>
+  <li><a href="notes/demos/dagmc-sdf/output/run-report.html">DAGMC-SDF Teaching Demo Run Report</a></li>
+  <li><a href="notes/demos/sdf-ray-tracing/README.html">SDF-Grid Ray Tracing Teaching Demo</a></li>
+  <li><a href="notes/demos/sdf-ray-tracing/output/run-report.html">SDF-grid ray tracing · floating-point results</a></li>
+  <li><a href="notes/demos/sdf-ray-tracing/output-quantized/run-report.html">SDF-grid ray tracing · quantized results</a></li>
+</ul>
+<h2 id="section-6">源码导读与资料来源</h2>
+
+<ul>
+  <li><a href="notes/references/organization-notes.html">Organization and Provenance</a></li>
+  <li><a href="notes/references/original-materials.html">Original Materials and English Companions</a></li>
+  <li><a href="notes/references/related-repositories.html">Related Software Repositories</a></li>
+  <li><a href="notes/references/verification.html">Organization Verification</a></li>
+  <li><a href="notes/source-code/README.html">Source-Code Reading Guide</a></li>
+</ul>
+<ul>
+  <li><a href="catalog/sources.html">41 条证据记录与阅读范围</a></li>
+  <li><a href="catalog/inventory.html">原始资料清单统计</a></li>
+</ul>
+    </main>
+  </body>
+</html>

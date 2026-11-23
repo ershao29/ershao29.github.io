@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sdf_grid.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>sdf_grid.py</h1>
+        <a href="../../labs/sdf-ray-tracing.html">sdf-ray-tracing 实验导航</a> · <a href="../../downloads/sdf-ray-tracing.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>"""CPU teaching implementation of Hansson-Soderlund et al. (JCGT 2022).
+
+Python 3.9+, standard library only. Distances are positive outside.
+The paper's optimized polynomial g is the NEGATIVE of the trilinear field F.
+This does not affect roots; normals and signs always use F here.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import heapq
+import itertools
+import math
+from typing import Callable
+
+Vec = tuple[float, float, float]
+Cell = tuple[int, int, int]
+CORNERS = tuple(itertools.product((0, 1), repeat=3))
+
+
+<span id="add">def add(a: Vec, b: Vec) -&gt; Vec:</span>
+    return tuple(a[i] + b[i] for i in range(3))
+
+
+<span id="mul">def mul(a: Vec, s: float) -&gt; Vec:</span>
+    return tuple(v * s for v in a)
+
+
+<span id="dot">def dot(a: Vec, b: Vec) -&gt; float:</span>
+    return sum(x * y for x, y in zip(a, b))
+
+
+<span id="unit">def unit(a: Vec) -&gt; Vec:</span>
+    n = math.sqrt(dot(a, a))
+    return mul(a, 1 / n) if n &gt; 1e-14 else (0.0, 0.0, 0.0)
+
+
+<span id="lerp">def lerp(t: float, a: float, b: float) -&gt; float:</span>
+    return a + t * (b - a)
+
+
+<span id="trilinear">def trilinear(s: dict[Cell, float], p: Vec) -&gt; float:</span>
+    """Equation (1). Coordinates may be outside [0,1] for normal extrapolation."""
+    x, y, z = p
+    return lerp(z, lerp(y, lerp(x, s[0, 0, 0], s[1, 0, 0]),
+                          lerp(x, s[0, 1, 0], s[1, 1, 0])),
+                   lerp(y, lerp(x, s[0, 0, 1], s[1, 0, 1]),
+                          lerp(x, s[0, 1, 1], s[1, 1, 1])))
+
+
+<span id="gradient">def gradient(s: dict[Cell, float], p: Vec) -&gt; Vec:</span>
+    """Equations (9)-(11), before inverse-transpose coordinate conversion."""
+    x, y, z = p
+    gx = lerp(z, lerp(y, s[1, 0, 0] - s[0, 0, 0], s[1, 1, 0] - s[0, 1, 0]),
+                 lerp(y, s[1, 0, 1] - s[0, 0, 1], s[1, 1, 1] - s[0, 1, 1]))
+    gy = lerp(z, lerp(x, s[0, 1, 0] - s[0, 0, 0], s[1, 1, 0] - s[1, 0, 0]),
+                 lerp(x, s[0, 1, 1] - s[0, 0, 1], s[1, 1, 1] - s[1, 0, 1]))
+    gz = lerp(y, lerp(x, s[0, 0, 1] - s[0, 0, 0], s[1, 0, 1] - s[1, 0, 0]),
+                 lerp(x, s[0, 1, 1] - s[0, 1, 0], s[1, 1, 1] - s[1, 1, 0]))
+    return gx, gy, gz
+
+
+<span id="cubic_coefficients">def cubic_coefficients(s: dict[Cell, float], o: Vec, d: Vec) -&gt; tuple[float, ...]:</span>
+    """Paper equations (3), (6), (7). Ascending order: c0,c1,c2,c3.
+
+    No normalization of d: t retains the caller's ray parameter.
+    g(t) == -trilinear(s, o+t*d), as printed in the source PDF.
+    """
+    ox, oy, oz = o
+    dx, dy, dz = d
+    k0 = s[0, 0, 0]
+    k1 = s[1, 0, 0] - k0
+    k2 = s[0, 1, 0] - k0
+    k3 = s[1, 1, 0] - s[0, 1, 0] - k1
+    a = s[1, 0, 1] - s[0, 0, 1]
+    k4 = k0 - s[0, 0, 1]
+    k5 = k1 - a
+    k6 = k2 - (s[0, 1, 1] - s[0, 0, 1])
+    k7 = k3 - (s[1, 1, 1] - s[0, 1, 1] - a)
+    m0, m1 = ox * oy, dx * dy
+    m2 = ox * dy + oy * dx
+    m3, m4, m5 = k5 * oz - k1, k6 * oz - k2, k7 * oz - k3
+    return ((k4 * oz - k0) + ox * m3 + oy * m4 + m0 * m5,
+            dx * m3 + dy * m4 + m2 * m5 + dz * (k4 + k5 * ox + k6 * oy + k7 * m0),
+            m1 * m5 + dz * (k5 * dx + k6 * dy + k7 * m2),
+            k7 * m1 * dz)
+
+
+<span id="evaluate">def evaluate(c: tuple[float, ...], t: float) -&gt; float:</span>
+    value = 0.0
+    for v in reversed(c):
+        value = value * t + v
+    return value
+
+
+<span id="quadratic_roots">def quadratic_roots(a: float, b: float, c: float) -&gt; list[float]:</span>
+    scale = max(abs(a), abs(b), abs(c))
+    if scale == 0:
+        return []
+    a, b, c = a / scale, b / scale, c / scale
+    if abs(a) &lt; 1e-14:
+        return [] if abs(b) &lt; 1e-14 else [-c / b]
+    disc = b * b - 4 * a * c
+    tol = 2e-15 * (b * b + abs(4 * a * c))
+    if disc &lt; -tol:
+        return []
+    root = math.sqrt(max(0.0, disc))
+    q = -0.5 * (b + math.copysign(root, b))
+    if q == 0:
+        return [-b / (2 * a)]
+    return sorted(set((q / a, c / q)))
+
+
+<span id="real_roots">def real_roots(c: tuple[float, ...]) -&gt; list[float]:</span>
+    """Vieta/Cardano real roots, with explicit degree reduction."""
+    c0, c1, c2, c3 = c
+    if abs(c3) &lt; 1e-14 * max(abs(v) for v in c):
+        return quadratic_roots(c2, c1, c0)
+    if c3 == 0:
+        return []
+    a, b, cc = c2 / c3, c1 / c3, c0 / c3
+    p = b - a * a / 3
+    q = 2 * a * a * a / 27 - a * b / 3 + cc
+    # The depressed cubic loses relative precision close to a triple root.
+    if (abs(p) &lt;= 3e-15 * (abs(b) + a * a / 3)
+            and abs(q) &lt;= 3e-15 * (abs(2 * a * a * a / 27) + abs(a * b / 3) + abs(cc))):
+        return [-a / 3]
+    disc = (q / 2) ** 2 + (p / 3) ** 3
+    tol = 3e-15 * ((q / 2) ** 2 + abs((p / 3) ** 3))
+    cbrt = lambda x: math.copysign(abs(x) ** (1 / 3), x)
+    if disc &gt; tol:
+        u = cbrt(-q / 2 - math.copysign(math.sqrt(disc), q))
+        v = -p / (3 * u) if u != 0 else 0.0
+        return [u + v - a / 3]
+    if disc &lt; -tol:
+        r = 2 * math.sqrt(-p / 3)
+        phi = math.acos(max(-1.0, min(1.0, -q / (2 * math.sqrt(-(p / 3) ** 3)))))
+        return sorted(r * math.cos((phi + 2 * math.pi * k) / 3) - a / 3 for k in range(3))
+    u = cbrt(-q / 2)
+    return sorted(set((2 * u - a / 3, -u - a / 3)))
+
+
+@dataclass
+<span id="Stats">class Stats:</span>
+    boxes: int = 0
+    voxels: int = 0
+    iterations: int = 0
+    field_samples: int = 0
+    shadow_early: int = 0
+    exhausted: int = 0
+
+
+<span id="first_root">def first_root(c: tuple[float, ...], end: float, method: str = "A",</span>
+               any_hit: bool = False, stats: Stats | None = None) -&gt; float | None:
+    """Find first root in CLOSED [0,end]; any_hit returns a witness interval start.
+
+    For a shadow query the returned number is NOT a surface distance. Consumers
+    must use it only as a boolean. The caller clips end to the light distance.
+    M and NR use derivative splitting plus safeguarded numerical iterations.
+    ST is a conservative 1D Lipschitz sphere-tracing analogue in the voxel.
+    """
+    stats = stats if stats is not None else Stats()
+    if end &lt; 0:
+        return None
+    scaled = tuple(c[i] * end ** i for i in range(4))
+    scale = max(abs(v) for v in scaled)
+    if scale == 0:
+        return 0.0  # ray segment lies on the zero set
+    c = tuple(v / scale for v in scaled)
+    eps = 2e-12  # normalized polynomial residual, not world-distance tolerance
+    if end == 0:
+        return 0.0 if abs(c[0]) &lt;= eps else None
+    if method == "ST":
+        # Bound |dg/dtau| on [0,1], then |g|/L is a safe parameter step.
+        critical = [0.0, 1.0]
+        if c[3] != 0:
+            vertex = -c[2] / (3 * c[3])
+            if 0 &lt; vertex &lt; 1:
+                critical.append(vertex)
+        deriv = (c[1], 2 * c[2], 3 * c[3])
+        bound = max(abs(evaluate(deriv, u)) for u in critical)
+        if bound == 0:
+            return 0.0 if abs(c[0]) &lt;= eps else None
+        t = 0.0
+        for _ in range(128):
+            stats.iterations += 1
+            value = evaluate(c, t)
+            if abs(value) &lt; 1e-7:
+                return t * end
+            t += abs(value) / bound
+            if t &gt; 1:
+                return None
+        stats.exhausted += 1
+        return None
+    if method == "A" and not any_hit:
+        roots = []
+        for t in real_roots(c):
+            if -1e-10 &lt;= t &lt;= 1 + 1e-10:
+                t = min(1.0, max(0.0, t))
+                for _ in range(2):
+                    der = evaluate((c[1], 2 * c[2], 3 * c[3]), t)
+                    new = t - evaluate(c, t) / der if abs(der) &gt; 1e-14 else t
+                    if 0 &lt;= new &lt;= 1:
+                        t = new
+                if abs(evaluate(c, t)) &lt;= 1e-8:
+                    roots.append(t)
+        return min(roots) * end if roots else None
+    if method not in ("A", "M", "NR"):
+        raise ValueError(f"Unknown solver: {method}")
+    cuts = [0.0] + [r for r in quadratic_roots(3 * c[3], 2 * c[2], c[1])
+                    if 0 &lt; r &lt; 1] + [1.0]
+    cuts = sorted(set(cuts))
+    for lo, hi in zip(cuts, cuts[1:]):
+        flo, fhi = evaluate(c, lo), evaluate(c, hi)
+        if abs(flo) &lt;= eps:
+            if any_hit:
+                stats.shadow_early += 1
+            return lo * end
+        if abs(fhi) &lt;= eps:
+            if any_hit:
+                stats.shadow_early += 1
+            return hi * end  # monotonic interval: this is its first root
+        if flo * fhi &gt; 0:
+            continue
+        if any_hit:
+            stats.shadow_early += 1
+            return lo * end
+        t = (lo * fhi - hi * flo) / (fhi - flo)
+        for iteration in range(80):
+            stats.iterations += 1
+            ft = evaluate(c, t)
+            if abs(ft) &lt;= eps or hi - lo &lt; 1e-11:
+                return t * end
+            if flo * ft &lt; 0:
+                hi, fhi = t, ft
+            else:
+                lo, flo = t, ft
+            if method == "NR":
+                der = evaluate((c[1], 2 * c[2], 3 * c[3]), t)
+                proposed = t - ft / der if abs(der) &gt; 1e-14 else math.nan
+            else:
+                proposed = (lo * fhi - hi * flo) / (fhi - flo)
+            # Added guard: avoid Newton escape, tiny derivatives, and false-position stagnation.
+            if (not math.isfinite(proposed) or not lo &lt; proposed &lt; hi
+                    or iteration % 8 == 7):
+                proposed = (lo + hi) / 2
+            t = proposed
+        stats.exhausted += 1
+        return None
+    return None
+
+
+<span id="ray_box">def ray_box(o: Vec, d: Vec, lower: Vec, upper: Vec,</span>
+            near: float = 0.0, far: float = math.inf) -&gt; tuple[float, float] | None:
+    """Slabs; handle zero direction without inf*0 or division by zero."""
+    for axis in range(3):
+        if d[axis] == 0:
+            if not lower[axis] &lt;= o[axis] &lt;= upper[axis]:
+                return None
+        else:
+            a, b = (lower[axis] - o[axis]) / d[axis], (upper[axis] - o[axis]) / d[axis]
+            near, far = max(near, min(a, b)), min(far, max(a, b))
+            if near &gt; far:
+                return None
+    return near, far
+
+
+@dataclass
+<span id="Node">class Node:</span>
+    lower: Vec
+    upper: Vec
+    children: list[Node] = field(default_factory=list)
+    items: list[Cell] = field(default_factory=list)
+
+
+@dataclass
+<span id="Hit">class Hit:</span>
+    t: float
+    cell: Cell
+
+
+<span id="Grid">class Grid:</span>
+    """Regular grid with optional snorm8 quantization, plus a one-node halo.
+
+    Shared node storage keeps common face values identical. The halo is sampled
+    from the input field for continuous normals at the outer domain boundary.
+    Sparse structures store references, not the GPU paper's duplicated 4^3 payload.
+    """
+    def __init__(self, n: int, fn: Callable[[float, float, float], float],
+                 lower: Vec = (-1.5, -1.5, -1.5), upper: Vec = (1.5, 1.5, 1.5),
+                 quantize: bool = False, brick_size: int = 7):
+        if n &lt; 2 or n &amp; (n - 1):
+            raise ValueError("n must be a power of two &gt;= 2 (octree demo)")
+        if brick_size &lt; 1 or any(upper[a] &lt;= lower[a] for a in range(3)):
+            raise ValueError("positive brick size and box extents required")
+        self.n, self.lower, self.upper = n, lower, upper
+        self.h = tuple((upper[a] - lower[a]) / n for a in range(3))
+        self.brick_size = brick_size
+        self.values: dict[Cell, float] = {}
+        self.quantize = quantize
+        self.quant_range = 0.5 * math.sqrt(dot(self.h, self.h))
+        for q in itertools.product(range(-1, n + 2), repeat=3):
+            value = fn(*(lower[a] + q[a] * self.h[a] for a in range(3)))
+            if quantize:
+                value = round(max(-1.0, min(1.0, value / self.quant_range)) * 127) / 127 * self.quant_range
+            self.values[q] = value
+        self.active: dict[Cell, dict[Cell, float]] = {}
+        max_slopes = [0.0] * 3
+        for q in itertools.product(range(n), repeat=3):
+            corners = self.corners(q)
+            vals = list(corners.values())
+            if min(vals) &lt;= 0 &lt;= max(vals):
+                self.active[q] = corners
+            for axis in range(3):
+                for b in CORNERS:
+                    if b[axis] == 0:
+                        opposite = list(b)
+                        opposite[axis] = 1
+                        max_slopes[axis] = max(max_slopes[axis],
+                            abs(corners[tuple(opposite)] - corners[b]) / self.h[axis])
+        self.lipschitz = math.sqrt(dot(tuple(max_slopes), tuple(max_slopes)))
+        self.voxel_bvh = self.build_bvh(list(self.active), 1)
+        self.bricks: dict[Cell, list[Cell]] = {}
+        for cell in self.active:
+            brick = tuple(q // brick_size * brick_size for q in cell)
+            self.bricks.setdefault(brick, []).append(cell)
+        self.brick_bvh = self.build_bvh(list(self.bricks), brick_size)
+        self.octree = self.build_octree((0, 0, 0), n, list(self.active))
+
+    def corners(self, cell: Cell) -&gt; dict[Cell, float]:
+        return {b: self.values[tuple(cell[a] + b[a] for a in range(3))] for b in CORNERS}
+
+    def bounds(self, cell: Cell, size: int = 1) -&gt; tuple[Vec, Vec]:
+        return (tuple(self.lower[a] + cell[a] * self.h[a] for a in range(3)),
+                tuple(self.lower[a] + min(self.n, cell[a] + size) * self.h[a] for a in range(3)))
+
+    def build_bvh(self, items: list[Cell], size: int) -&gt; Node | None:
+        if not items:
+            return None
+        boxes = [self.bounds(q, size) for q in items]
+        lo = tuple(min(b[0][a] for b in boxes) for a in range(3))
+        hi = tuple(max(b[1][a] for b in boxes) for a in range(3))
+        if len(items) &lt;= 4:
+            return Node(lo, hi, items=items)
+        axis = max(range(3), key=lambda a: hi[a] - lo[a])
+        items = sorted(items, key=lambda q: q[axis])
+        mid = len(items) // 2
+        return Node(lo, hi, children=[self.build_bvh(items[:mid], size),
+                                     self.build_bvh(items[mid:], size)])
+
+    def build_octree(self, base: Cell, size: int, items: list[Cell]) -&gt; Node | None:
+        if not items:
+            return None
+        lo, hi = self.bounds(base, size)
+        if size == 1:
+            return Node(lo, hi, items=items)
+        half = size // 2
+        groups: dict[Cell, list[Cell]] = {}
+        for q in items:
+            child = tuple(base[a] + int(q[a] &gt;= base[a] + half) * half for a in range(3))
+            groups.setdefault(child, []).append(q)
+        return Node(lo, hi, children=[self.build_octree(q, half, cells) for q, cells in groups.items()])
+
+    def local(self, p: Vec, cell: Cell) -&gt; Vec:
+        return tuple((p[a] - self.lower[a]) / self.h[a] - cell[a] for a in range(3))
+
+    def cell_at(self, p: Vec, d: Vec = (0.0, 0.0, 0.0)) -&gt; Cell:
+        coords = [(p[a] - self.lower[a]) / self.h[a] for a in range(3)]
+        # Direction selects the entering cell on exact grid faces.
+        return tuple(max(0, min(self.n - 1, math.floor(
+            math.nextafter(coords[a], -math.inf) if d[a] &lt; 0 else math.nextafter(coords[a], math.inf))))
+                     for a in range(3))
+
+    def sample(self, p: Vec) -&gt; float:
+        cell = self.cell_at(p)
+        return trilinear(self.corners(cell), self.local(p, cell))
+
+    def normal(self, p: Vec, cell: Cell, mode: str = "smooth") -&gt; Vec:
+        def analytic(q: Cell) -&gt; Vec:
+            grad = gradient(self.corners(q), self.local(p, q))
+            return unit(tuple(grad[a] / self.h[a] for a in range(3)))
+        if mode == "analytic":
+            return analytic(cell)
+        if mode in ("tetra", "tetra_local"):
+            eps = 0.2 * min(self.h)
+            n = (0.0, 0.0, 0.0)
+            corners = self.corners(cell)
+            for k in ((1, -1, -1), (-1, -1, 1), (-1, 1, -1), (1, 1, 1)):
+                q = add(p, mul(k, eps))
+                value = self.sample(q) if mode == "tetra" else trilinear(corners, self.local(q, cell))
+                n = add(n, mul(k, value))
+            return unit(n)
+        if mode != "smooth":
+            raise ValueError(f"Unknown normal: {mode}")
+        g = tuple((p[a] - self.lower[a]) / self.h[a] - 0.5 for a in range(3))
+        base = tuple(math.floor(v) for v in g)
+        uvw = tuple(g[a] - base[a] for a in range(3))
+        result = (0.0, 0.0, 0.0)
+        for b in CORNERS:
+            q = tuple(base[a] + b[a] for a in range(3))
+            weight = math.prod(uvw[a] if b[a] else 1 - uvw[a] for a in range(3))
+            result = add(result, mul(analytic(q), weight))
+        # A singular/cancelling stencil has no well-defined smooth normal.
+        return unit(result) if dot(result, result) &gt; 1e-24 else analytic(cell)
+
+    def dda(self, o: Vec, d: Vec, near: float, far: float):
+        """Ordered voxel intervals. Ties cross all axes (edge/corner hits)."""
+        cell = list(self.cell_at(add(o, mul(d, near)), d))
+        t = near
+        for _ in range(3 * self.n + 3):
+            times = []
+            for axis in range(3):
+                if d[axis] == 0:
+                    times.append(math.inf)
+                else:
+                    plane = cell[axis] + (1 if d[axis] &gt; 0 else 0)
+                    times.append((self.lower[axis] + plane * self.h[axis] - o[axis]) / d[axis])
+            nxt = min(far, *times)
+            yield tuple(cell), t, max(t, nxt)
+            if nxt &gt;= far:
+                return
+            for axis in range(3):
+                if times[axis] &lt;= nxt + 1e-12 * max(1.0, abs(nxt)):
+                    cell[axis] += 1 if d[axis] &gt; 0 else -1
+            if any(q &lt; 0 or q &gt;= self.n for q in cell):
+                return
+            t = max(t, nxt)
+        raise RuntimeError("DDA failed to make progress")
+
+    def intersect_cell(self, cell: Cell, o: Vec, d: Vec, near: float, far: float,
+                       method: str, any_hit: bool, stats: Stats) -&gt; Hit | None:
+        if cell not in self.active or far &lt; near:
+            return None
+        stats.voxels += 1
+        local_o = self.local(add(o, mul(d, near)), cell)
+        local_d = tuple(d[a] / self.h[a] for a in range(3))
+        c = cubic_coefficients(self.active[cell], local_o, local_d)
+        t = first_root(c, far - near, method, any_hit, stats)
+        return Hit(near + t, cell) if t is not None else None
+
+    def tree_trace(self, root: Node | None, size: int, o: Vec, d: Vec, near: float,
+                   far: float, method: str, any_hit: bool, stats: Stats) -&gt; Hit | None:
+        if root is None:
+            return None
+        queue = []
+        counter = itertools.count()
+        best: Hit | None = None
+
+        def enqueue(node: Node):
+            stats.boxes += 1
+            interval = ray_box(o, d, node.lower, node.upper, near, far if best is None else best.t)
+            if interval:
+                heapq.heappush(queue, (interval[0], next(counter), interval[1], node))
+        enqueue(root)
+        while queue:
+            start, _, stop, node = heapq.heappop(queue)
+            if best and start &gt; best.t:
+                break
+            if node.children:
+                for child in node.children:
+                    enqueue(child)
+                continue
+            for item in node.items:
+                stats.boxes += 1
+                interval = ray_box(o, d, *self.bounds(item, size), start,
+                                   min(stop, best.t if best else far))
+                if not interval:
+                    continue
+                candidates = self.dda(o, d, *interval) if size &gt; 1 else [(item, *interval)]
+                for cell, a, b in candidates:
+                    hit = self.intersect_cell(cell, o, d, a, b, method, any_hit, stats)
+                    if hit:
+                        if any_hit:
+                            return hit
+                        if best is None or hit.t &lt; best.t:
+                            best = hit
+                        break
+        return best
+
+    def trace(self, o: Vec, d: Vec, traversal: str = "SVS", solver: str = "A",
+              near: float = 0.0, far: float = math.inf, any_hit: bool = False,
+              stats: Stats | None = None) -&gt; Hit | None:
+        """any_hit=True returns an occlusion witness; its t is not a hit position."""
+        if dot(d, d) == 0 or not all(math.isfinite(v) for v in (*o, *d)):
+            raise ValueError("finite nonzero ray direction required")
+        if near &lt; 0 or far &lt; near:
+            return None
+        stats = stats if stats is not None else Stats()
+        stats.boxes += 1
+        interval = ray_box(o, d, self.lower, self.upper, near, far)
+        if interval is None:
+            return None
+        near, far = interval
+        if traversal in ("SVS", "SBS", "SVO"):
+            root = {"SVS": self.voxel_bvh, "SBS": self.brick_bvh, "SVO": self.octree}[traversal]
+            return self.tree_trace(root, self.brick_size if traversal == "SBS" else 1,
+                                   o, d, near, far, solver, any_hit, stats)
+        if traversal == "DDA":
+            for cell, a, b in self.dda(o, d, near, far):
+                hit = self.intersect_cell(cell, o, d, a, b, solver, any_hit, stats)
+                if hit:
+                    return hit
+            return None
+        if traversal != "GST":
+            raise ValueError(f"Unknown traversal: {traversal}")
+        # Dense conservative teaching GST. No mip hierarchy or GPU quantization layout.
+        speed = math.sqrt(dot(d, d))
+        bound = self.lipschitz * speed
+        if bound == 0:
+            return Hit(near, self.cell_at(add(o, mul(d, near)), d)) if self.sample(add(o, mul(d, near))) == 0 else None
+        t = near
+        for _ in range(512):
+            p = add(o, mul(d, t))
+            cell = self.cell_at(p, d)
+            value = self.sample(p)
+            stats.field_samples += 1
+            if solver == "GST":
+                if abs(value) &lt; 1e-6:
+                    return Hit(t, cell)
+            elif cell in self.active:
+                box_end = ray_box(o, d, *self.bounds(cell), t, far)
+                if box_end:
+                    hit = self.intersect_cell(cell, o, d, t, box_end[1], solver, any_hit, stats)
+                    if hit:
+                        return hit
+                    t = math.nextafter(box_end[1], math.inf)
+                    if t &gt; far:
+                        return None
+                    continue
+            step = abs(value) / bound
+            nxt = t + step
+            if nxt &gt; far:
+                return None
+            if nxt &lt;= t:
+                stats.exhausted += 1
+                return None
+            t = nxt
+        stats.exhausted += 1
+        return None
+
+
+<span id="scene_sdf">def scene_sdf(x: float, y: float, z: float) -&gt; float:</span>
+    """Union of an exact sphere SDF and an exact y-axis torus SDF."""
+    sphere = math.sqrt((x + 0.57) ** 2 + (y - 0.12) ** 2 + z * z) - 0.64
+    torus = math.hypot(math.hypot(x - 0.55, z) - 0.49, y + 0.15) - 0.21
+    return min(sphere, torus)</code></pre>
+    </main>
+  </body>
+</html>

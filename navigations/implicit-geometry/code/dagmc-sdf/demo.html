@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>demo.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>demo.py</h1>
+        <a href="../../labs/dagmc-sdf.html">dagmc-sdf 实验导航</a> · <a href="../../downloads/dagmc-sdf.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>#!/usr/bin/env python3
+"""Run reproducible prefilter experiments; Python 3.9+, standard library only."""
+import argparse
+from dataclasses import asdict
+import csv
+import json
+import math
+from pathlib import Path
+import platform
+import random
+import time
+
+from sdf_preconditioner import (
+    Sphere, SphericalShell, UniformGrid, Prefilter, KernelCounts, add, sub, mul,
+    norm, unit, isotropic, uniform_ball, octasphere, hollow_box,
+    fixed_utilization, exponential_utilization, simulate_walk,
+)
+
+
+<span id="write_csv">def write_csv(path, rows):</span>
+    with path.open('w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=list(rows[0]))
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+<span id="utilization_experiment">def utilization_experiment(samples, seed):</span>
+    rng = random.Random(seed)
+    radius = 10.
+    starts = [uniform_ball(rng, radius) for _ in range(samples)]
+    directions = [isotropic(rng) for _ in range(samples)]
+    flights = [rng.expovariate(1.) for _ in range(samples)]
+    ratios = (.02, .05, .1, .2, .35, .5, .75, 1., 1.25, 1.5, 2.)
+    rows = []
+    # Reuse the same independent samples between resolutions and error bounds.
+    for distribution in ('fixed', 'exponential'):
+        experiments = []
+        for ratio in ratios:
+            lengths = [radius*ratio*(e if distribution == 'exponential' else 1.)
+                       for e in flights]
+            ends = [add(p, mul(u, d)) for p, u, d in zip(starts, directions, lengths)]
+            ideal = sum(2*radius-norm(p)-norm(q) &gt; d
+                        for p, q, d in zip(starts, ends, lengths))/samples
+            theory = (fixed_utilization if distribution == 'fixed' else exponential_utilization)(
+                ratio*radius, radius)
+            stderr = math.sqrt(max(0., theory*(1-theory))/samples)
+            experiments.append((ratio, lengths, ends, ideal, theory, stderr))
+        for cells in (8, 16, 32):
+            shape = Sphere(radius)
+            started = time.perf_counter()
+            grid = UniformGrid.build(shape.bounds, cells, shape.inside_distance)
+            build_seconds = time.perf_counter()-started
+            for error_mode in ('paper', 'rms'):
+                # Cache current-point samples for the parameter study only.
+                # Timing benchmarks below do not use this cache.
+                a_samples = [grid.sample(p, error_mode) for p in starts]
+                for ratio, lengths, ends, ideal, theory, stderr in experiments:
+                    single = pair = 0
+                    for a, end, d in zip(a_samples, ends, lengths):
+                        guard = 1e-12*max(grid.scale, d)
+                        single += a.lower &gt; d+guard
+                        b = grid.sample(end, error_mode)
+                        pair += b is not None and a.lower+b.lower &gt; d+guard
+                    rows.append(dict(distribution=distribution, cells=cells,
+                                     error_mode=error_mode, h_over_R=2/cells,
+                                     flight_over_R=ratio, samples=samples,
+                                     ideal_mc=ideal, ideal_theory=theory,
+                                     ideal_standard_error=stderr,
+                                     single_utilization=single/samples,
+                                     pair_utilization=pair/samples,
+                                     node_count=len(grid.values), value_bytes=grid.value_bytes,
+                                     build_seconds=build_seconds))
+            print(f'Utilization: {distribution}, {cells} cells/axis complete', flush=True)
+    return rows
+
+
+<span id="error_experiment">def error_experiment(samples, seed):</span>
+    rng = random.Random(seed)
+    shape = SphericalShell(3., 10.)
+    points = [tuple(rng.uniform(-10, 10) for _ in range(3)) for _ in range(samples)]
+    rows = []
+    for cells in (8, 16, 32):
+        grid = UniformGrid.build(shape.bounds, cells, shape.inside_distance)
+        for mode in ('paper', 'rms'):
+            errors, bounds, violations = [], [], 0
+            for p in points:
+                s = grid.sample(p, mode)
+                e = abs(s.value-shape.value(p))
+                errors.append(e)
+                bounds.append(s.error)
+                violations += e &gt; s.error+1e-10
+            rows.append(dict(cells=cells, error_mode=mode, samples=samples,
+                             max_error=max(errors), mean_error=sum(errors)/samples,
+                             mean_bound=sum(bounds)/samples,
+                             max_error_to_bound=max(e/b for e, b in zip(errors, bounds)),
+                             bound_violations=violations, value_bytes=grid.value_bytes))
+    return rows
+
+
+<span id="benchmark">def benchmark(kernel, name, samples, seed, cells=12):</span>
+    rng = random.Random(seed)
+    radius = 10.
+    events = []
+    while len(events) &lt; samples:
+        p = uniform_ball(rng, radius)
+        if kernel.contains(p):
+            events.append((p, isotropic(rng), rng.expovariate(1/1.5)))
+    kernel.counts = KernelCounts()
+    started = time.perf_counter()
+    grid = UniformGrid.build(kernel.bounds, cells, kernel.inside_distance)
+    build_seconds = time.perf_counter()-started
+    setup_counts = kernel.counts.snapshot()
+    results, reference = [], None
+    modes = [('baseline', 'paper'), ('single', 'paper'), ('pair', 'paper'), ('pair', 'rms')]
+    for mode, error_mode in modes:
+        kernel.counts = KernelCounts()
+        query = Prefilter(kernel, grid, error_mode)
+        started = time.perf_counter()
+        hits = [query.next_event(p, u, d, mode) for p, u, d in events]
+        elapsed = time.perf_counter()-started
+        if reference is None:
+            reference = hits
+        mismatches = sum(a != b for a, b in zip(reference, hits))
+        if mismatches:
+            raise AssertionError(f'{name}: {mode} changed {mismatches} event decisions')
+        results.append(dict(geometry=name, mode=mode, error_mode=error_mode,
+                            events=samples, seconds=elapsed, decision_mismatches=mismatches,
+                            skipped=query.counts.skipped_rays,
+                            utilization=query.counts.skipped_rays/samples,
+                            field_lookups=query.counts.field_lookups,
+                            **kernel.counts.snapshot()))
+    return dict(name=name, build_seconds=build_seconds, setup_counts=setup_counts,
+                node_count=len(grid.values), value_bytes=grid.value_bytes,
+                triangles=len(getattr(kernel, 'triangles', [])), results=results)
+
+
+<span id="query_experiment">def query_experiment(samples, seed):</span>
+    rng = random.Random(seed)
+    shape = SphericalShell(3., 10.)
+    grid = UniformGrid.build(shape.bounds, 16, shape.inside_distance)
+    points = [tuple(rng.uniform(-12, 12) for _ in range(3)) for _ in range(samples)]
+    output = []
+    for error_mode in ('paper', 'rms'):
+        query = Prefilter(shape, grid, error_mode)
+        mismatches = sum(query.contains(p) != shape.contains(p) for p in points)
+        interior = [p for p in points if shape.contains(p)]
+        lower_bad = exact_bad = nonexact = 0
+        for p in interior:
+            lower = query.safety_distance(p)
+            exact = query.safety_distance(p, require_exact=True)
+            lower_bad += lower.value &gt; abs(shape.value(p))+1e-10
+            exact_bad += abs(exact.value-abs(shape.value(p))) &gt; 1e-10 or not exact.exact
+            nonexact += not lower.exact
+        output.append(dict(error_mode=error_mode, points=samples,
+                           interior_points=len(interior), containment_mismatches=mismatches,
+                           unsafe_lower_bounds=lower_bad, incorrect_exact_answers=exact_bad,
+                           nonexact_lower_bound_answers=nonexact, counts=asdict(query.counts)))
+        if mismatches or lower_bad or exact_bad:
+            raise AssertionError('query contract mismatch')
+    return output
+
+
+<span id="walk_experiment">def walk_experiment(histories, seed):</span>
+    shape = Sphere(10.)
+    grid = UniformGrid.build(shape.bounds, 16, shape.inside_distance)
+    output = []
+    for mean in (.5, 1.5, 5., 10.):
+        baseline = simulate_walk(shape, grid, mean, histories, seed, mode='baseline',
+                                 max_collisions=300)
+        for mode in ('paper', 'rms'):
+            result = simulate_walk(shape, grid, mean, histories, seed, mode='pair',
+                                   error_mode=mode, max_collisions=300)
+            matches = result['traces'] == baseline['traces']
+            if not matches:
+                raise AssertionError('random-walk trajectories changed')
+            result.pop('traces')
+            result.update(mean_free_path=mean, mean_over_R=mean/10,
+                          error_mode=mode, identical_to_baseline=matches)
+            output.append(result)
+        print(f'Random walk: mean free path {mean:g} complete', flush=True)
+    return output
+
+
+<span id="nonconvex_example">def nonconvex_example():</span>
+    mesh = hollow_box(3., 1.)
+    grid = UniformGrid.build(mesh.bounds, 12, mesh.inside_distance)
+    query = Prefilter(mesh, grid, 'rms')
+    p, q = (-2., .17, .11), (2., .17, .11)
+    d, u = norm(sub(q, p)), unit(sub(q, p))
+    return dict(start=p, end=q, both_endpoints_inside=mesh.contains(p) and mesh.contains(q),
+                skip_certificate=query.certifies_no_crossing(p, q),
+                first_hit=mesh.first_hit(p, u, d), expected_first_hit=1.)
+
+
+<span id="report">def report(out, metrics):</span>
+    rows = [row for b in metrics['benchmarks'] for row in b['results']]
+    text = [
+        '# DAGMC-SDF Teaching Demo Run Report', '',
+        f"Environment: Python {metrics['python']}; {metrics['platform']}. Seed {metrics['seed']}.", '',
+        'Numerical and timing results are from an independent Python teaching implementation; no DAGMC/MCNP transport was run.', '',
+        '## Query and Event Correctness', '',
+        f"- Geometry query contract mismatches: {sum(r['containment_mismatches']+r['unsafe_lower_bounds']+r['incorrect_exact_answers'] for r in metrics['query_checks'])}.",
+        f"- Benchmark event-decision mismatches: {sum(r['decision_mismatches'] for r in rows)}.",
+        f"- Distance-field error-bound violations: {sum(r['bound_violations'] for r in metrics['error_checks'])}.",
+        '- All paired random walks match baseline collision counts and path lengths history by history.', '',
+        '## Triangle and Analytic Geometry Query Benchmarks', '',
+        '| Geometry | Mode | Error bound | Events | Avoided-ray fraction | Ray calls | Triangle tests | Seconds |',
+        '|---|---|---|---:|---:|---:|---:|---:|',
+    ]
+    for r in rows:
+        text.append(f"| {r['geometry']} | {r['mode']} | {r['error_mode']} | {r['events']} | "
+                    f"{r['utilization']:.3f} | {r['ray_calls']} | {r['triangle_tests']} | {r['seconds']:.4f} |")
+    text.extend(['', 'Timings exclude grid construction and input sampling; build costs are listed separately.', '',
+                 '| Geometry | Triangles | Grid nodes | Value bytes | Build seconds |',
+                 '|---|---:|---:|---:|---:|'])
+    for b in metrics['benchmarks']:
+        text.append(f"| {b['name']} | {b['triangles']} | {b['node_count']} | {b['value_bytes']} | {b['build_seconds']:.4f} |")
+    text.extend(['', 'Value bytes count only float64 field storage, excluding BVHs, Python objects, and metadata.', '',
+                 '## Random Walks', '',
+                 '| Mean free path/R | Error bound | Histories | Collisions | Escapes | Capped | Avoided-ray fraction |',
+                 '|---|---|---:|---:|---:|---:|---:|'])
+    for r in metrics['walks']:
+        c = r['queries']
+        text.append(f"| {r['mean_over_R']:.2f} | {r['error_mode']} | {r['histories']} | {r['collisions']} | "
+                    f"{r['escapes']} | {r['capped']} | {c['skipped_rays']/c['events']:.3f} |")
+    text.extend(['', '`capped` counts histories reaching the collision limit; these are retained and are not escapes.', '',
+                 'See `metrics.json` for configuration, error checks, and the nonconvex example. `utilization.csv` uses independent uniform-volume samples;',
+                 'that utilization model does not directly describe subsequent nonuniform collision positions in random walks.', '',
+                 '## Plots', '',
+                 'Run `python3 plot_results.py --output output` for utilization, distance-field, and prefilter diagrams.'])
+    (out/'run-report.md').write_text('\n'.join(text)+'\n')
+
+
+<span id="main">def main():</span>
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--samples', type=int, default=4000)
+    parser.add_argument('--histories', type=int, default=150)
+    parser.add_argument('--seed', type=int, default=20170417)
+    parser.add_argument('--output', type=Path, default=Path(__file__).parent/'output')
+    args = parser.parse_args()
+    if args.samples &lt; 50 or args.histories &lt; 1:
+        parser.error('--samples &gt;= 50 and --histories &gt;= 1 required')
+    out = args.output.resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    started = time.perf_counter()
+    utilization = utilization_experiment(args.samples, args.seed)
+    write_csv(out/'utilization.csv', utilization)
+    errors = error_experiment(args.samples, args.seed+1)
+    benchmarks = []
+    for shape, name in [(Sphere(10), 'analytic_sphere'), (SphericalShell(3, 10), 'analytic_shell'),
+                         (octasphere(10, 2), 'triangle_sphere_128'),
+                         (octasphere(10, 3), 'triangle_sphere_512')]:
+        benchmarks.append(benchmark(shape, name, args.samples, args.seed+2))
+        print(f'Benchmark: {name} complete', flush=True)
+    queries = query_experiment(args.samples, args.seed+3)
+    walks = walk_experiment(args.histories, args.seed+4)
+    nonconvex = nonconvex_example()
+    if nonconvex['skip_certificate'] or not nonconvex['both_endpoints_inside']:
+        raise AssertionError('nonconvex regression failed')
+    metrics = dict(seed=args.seed, samples=args.samples, histories=args.histories,
+                   python=platform.python_version(), platform=platform.platform(),
+                   seconds=time.perf_counter()-started, benchmarks=benchmarks,
+                   query_checks=queries, error_checks=errors, walks=walks,
+                   nonconvex_example=nonconvex)
+    (out/'metrics.json').write_text(json.dumps(metrics, ensure_ascii=False, indent=2, allow_nan=False)+'\n')
+    write_csv(out/'benchmark.csv', [r for b in benchmarks for r in b['results']])
+    write_csv(out/'error-bounds.csv', errors)
+    report(out, metrics)
+    print(f'Complete in {metrics["seconds"]:.2f}s: {out}', flush=True)
+
+
+if __name__ == '__main__':
+    main()</code></pre>
+    </main>
+  </body>
+</html>

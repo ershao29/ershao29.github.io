@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>CSN: A generalizable and high-fidelity framework for solving PDEs in complex real-world domains | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>CSN: A generalizable and high-fidelity framework for solving PDEs in complex real-world domains</h1>
+        <p>Zhou 等 · SSRN 预印本 · 将曲面几何与节块内解的近似分开</p>
+<a href="https://ssrn.com/abstract=7300024">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 1–3 页）</a></li>
+  <li><a href="#section-2">2 · CSN 框架（第 3–5 页）</a></li>
+  <li><a href="#section-3">3 · 实现（第 5–10 页）</a></li>
+  <li><a href="#section-4">4 · 数值算例（第 10–23 页）</a></li>
+  <li><a href="#section-5">5 · 结论与讨论（第 23–24 页）</a></li>
+  <li><a href="#section-6">附录 A、B（第 25 页起）</a></li>
+  <li><a href="#exercise">设计可解释的比较</a></li>
+  <li><a href="#section-7">总结与展望</a></li>
+  <li><a href="#section-8">对应 demo 与源码</a></li>
+  <li><a href="#section-9">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 1–3 页）</h2>
+
+<p>平面小单元常常同时承担贴合边界和逼近物理解的任务。作者提出分别选择几何表示和局部近似空间，以探究曲面复杂但解较平滑时能否使用较大的节块。</p>
+
+<h2 id="section-2">2 · CSN 框架（第 3–5 页）</h2>
+
+<p>用曲面方程围成单材料节块，再以各节块自己的几何中心为原点展开局部多项式。保持同一曲面、只提高多项式阶数，就能观察解空间精度的影响。</p>
+
+<h2 id="section-3">3 · 实现（第 5–10 页）</h2>
+
+<p>依次建立贴合材料界面的节块，写局部边值问题，选多项式基函数，再用加权残差及边界耦合确定系数。曲面进入体积分和面积分；即使曲面方程已知，数值积分和系数求解仍需要控制误差。</p>
+
+<h2 id="section-4">4 · 数值算例（第 10–23 页）</h2>
+
+<p>4.1 与 4.2 分别研究二维中子输运和三维螺旋十字几何；4.3 与 4.4 切换到稳态与瞬态导热；4.5 在同一网格上耦合多个物理场。比较表格时同时记录参考解、节点数、展开阶数及所测响应。</p>
+
+<h2 id="section-5">5 · 结论与讨论（第 23–24 页）</h2>
+
+<p>作者将实现定位为概念验证，指出节块质量、形状与阶数选择仍需系统评估。文中使用直接求解或特征值分解，因此较少节块本身不足以证明大型迭代实现会更快。</p>
+
+<h2 id="section-6">附录 A、B（第 25 页起）</h2>
+
+<p>A 补充二维输运结果，B 补充稳态导热结果。把附录的空间分布与正文的整体误差并排看，可检查整体指标是否掩盖曲面附近的局部偏差。</p>
+
+<h2 id="exercise">设计可解释的比较</h2>
+<p>选同一带圆形材料界面的算例。第一组固定曲面节块与数值积分规则，仅提高解的多项式阶数；第二组固定近似阶数，仅细分节块。两组均记录整体响应和界面邻近的局部误差。</p>
+<p>再提高曲面积分精度。若局部误差随积分规则变化，前两组尚不能单独归因于几何或多项式空间。把未知数、组装时间和求解时间同时列出，才可以讨论精度相同时的代价。</p>
+<h2 id="section-7">总结与展望</h2>
+
+<p>这篇预印本适合作为曲面输运的对照。可固定同一个变形几何与响应，分别细化节块、提高展开阶数，再与特征线法的分段、体积和响应误差比较。</p>
+
+<h2 id="section-8">对应 demo 与源码</h2>
+
+<p>资料中没有 CSN 求解器。可结合 OpenMOC 源码导读对照两种方法怎样处理材料界面、源区和体积，再用技术路线中的算例设计比较。</p>
+
+<ul>
+  <li><a href="../notes/source-code/README.html">OpenMC / OpenMOC 源码导读</a></li>
+  <li><a href="../notes/research-proposal/technical-roadmap.html">技术路线与验证计划</a></li>
+</ul>
+<h2 id="section-9">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://ssrn.com/abstract=7300024">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/supporting-papers.html">Supporting Papers: Proposal Reading Annotations</a></li>
+</ul>
+    </main>
+  </body>
+</html>

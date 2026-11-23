@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Walk on Stars: A Grid-Free Monte Carlo Method for PDEs with Neumann Boundary Conditions | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Walk on Stars: A Grid-Free Monte Carlo Method for PDEs with Neumann Boundary Conditions</h1>
+        <p>Sawhney · Miller · Gkioulekas · Crane · 用星形子域处理反射边界</p>
+<a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 2–3 页）</a></li>
+  <li><a href="#section-2">2 · 相关工作（第 3–5 页）</a></li>
+  <li><a href="#section-3">3 · 背景（第 5–7 页）</a></li>
+  <li><a href="#section-4">4 · Walk on Stars 算法（第 8–11 页）</a></li>
+  <li><a href="#section-5">5 · 几何查询（第 11–12 页）</a></li>
+  <li><a href="#section-6">6 · 评估（第 12–15 页）</a></li>
+  <li><a href="#section-7">7 · 限制与展望（第 15–16 页）</a></li>
+  <li><a href="#section-8">附录 A–E（第 18–20 页）</a></li>
+  <li><a href="#exercise">用一个解析解检查边界采样</a></li>
+  <li><a href="#section-9">总结与展望</a></li>
+  <li><a href="#section-10">对应 demo 与源码</a></li>
+  <li><a href="#section-11">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 2–3 页）</h2>
+
+<p>在指定点估计椭圆方程的解，可以把求解写成随机路径上的期望。混合边界增加了困难：已知值的 Dirichlet 边界可以终止路径，指定法向导数的 Neumann 边界则要贡献边界项。</p>
+
+<h2 id="section-2">2 · 相关工作（第 3–5 页）</h2>
+
+<p>比较基于网格的求解和逐点随机估计。Walk on Spheres 能在球内跨过许多细小步，但一个始终与边界相切的球会妨碍对反射边界的高效采样。</p>
+
+<h2 id="section-3">3 · 背景（第 5–7 页）</h2>
+
+<p>用 Green 函数和边界积分式把一点的解分解为边界值、边界导数和体源的贡献。先把 Neumann 项和源项去掉，检查公式怎样退化到熟悉的球面采样。</p>
+
+<h2 id="section-4">4 · Walk on Stars 算法（第 8–11 页）</h2>
+
+<p>把球裁成从当前点可见的星形子域。随机方向决定下一次的球面或可见边界事件；体源和 Neumann 数据另作采样并加权。读最终估计量时，为每一个期望标出对应的积分域和概率密度。</p>
+
+<h2 id="section-5">5 · 几何查询（第 11–12 页）</h2>
+
+<p>最近轮廓点限制星形区域的安全半径。带法向锥的层次结构可排除不可能形成轮廓的三角形组；另一个查询在球附近抽取边界点。最近表面点和最近可见性轮廓点承担不同职责。</p>
+
+<h2 id="section-6">6 · 评估（第 12–15 页）</h2>
+
+<p>分别考察终止容差带来的偏差与路径数控制的方差，再读不同几何规模、纯 Neumann 条件和参考求解器的比较。加路径能降低随机波动，不能自动消除固定容差偏差。</p>
+
+<h2 id="section-7">7 · 限制与展望（第 15–16 页）</h2>
+
+<p>可见性查询的代价、靠近复杂边界的步数以及要评估的点数都会改变适用性。若目标从少量探针变成整个高精度解场，应重新比较总成本。</p>
+
+<h2 id="section-8">附录 A–E（第 18–20 页）</h2>
+
+<p>先按 A 核对 Green 函数与核，再读 B 的开放和双面边界。C、D 分别解释首次命中规则和单独采样 Neumann 项的原因；E 给出几何查询伪代码，可与第 5 章逐项对照。</p>
+
+<h2 id="exercise">用一个解析解检查边界采样</h2>
+<p>在单位正方形取调和函数 u(x,y)=x。左右边设 Dirichlet 值 0 与 1，上下边设零 Neumann 数据。在 (¼,½) 处，估计目标应为 ¼。</p>
+<p>这个例子中体源与 Neumann 通量项都为零，但上下两边仍会影响路径的反射。先固定停止容差增加路径数，观察样本均值的波动；再减小容差，检查均值偏差是否改变。</p>
+<h2 id="section-9">总结与展望</h2>
+
+<p>可借鉴的是按几何查询组织随机估计量的方法。进一步学习可选带已知解的混合边界问题，分别减小停止容差、增加样本数，画出偏差与方差变化。</p>
+
+<h2 id="section-10">对应 demo 与源码</h2>
+
+<p>关联练习：DAGMC demo 有最近点与定向求交接口可供比较。它的随机游走描述粒子飞行；资料里没有 WoSt 的 PDE 求解实现。</p>
+
+<ul>
+  <li><a href="../code/dagmc-sdf/sdf_preconditioner.html#TriangleMesh">sdf_preconditioner.py · TriangleMesh</a></li>
+  <li><a href="../labs/dagmc-sdf.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-11">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/supporting-papers.html">Supporting Papers: Proposal Reading Annotations</a></li>
+</ul>
+    </main>
+  </body>
+</html>

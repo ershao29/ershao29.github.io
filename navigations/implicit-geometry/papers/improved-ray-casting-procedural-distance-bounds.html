@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Improved Ray Casting of Procedural Distance Bounds | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Improved Ray Casting of Procedural Distance Bounds</h1>
+        <p>Keinert · Schäfer · Korndörfer · Ganse · Stamminger · 保守步长、过松弛与屏幕空间停止条件</p>
+<a href="https://doi.org/10.1080/2165347X.2015.1033069">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 2–3 页）</a></li>
+  <li><a href="#section-2">2 · 过松弛球追踪（第 3–4 页）</a></li>
+  <li><a href="#section-3">3 · 屏幕空间候选点（第 4–6 页）</a></li>
+  <li><a href="#section-4">4 · 二次射线自交（第 6–8 页）</a></li>
+  <li><a href="#section-5">5 · 减少不连续伪影（第 8 页）</a></li>
+  <li><a href="#section-6">6 · 凸物体优化（第 8–9 页）</a></li>
+  <li><a href="#section-7">7 · 实验结果（第 9–13 页）</a></li>
+  <li><a href="#exercise">检查一次过松弛试探</a></li>
+  <li><a href="#section-8">总结与展望</a></li>
+  <li><a href="#section-9">对应 demo 与源码</a></li>
+  <li><a href="#section-10">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 2–3 页）</h2>
+
+<p>程序化几何可以给出一个到表面的距离下界。以它为半径的空球内没有表面，沿光线走到球端点是安全的。下界越松，完成同样路程所需的函数求值就越多。</p>
+
+<h2 id="section-2">2 · 过松弛球追踪（第 3–4 页）</h2>
+
+<p>尝试走得比本次空球半径更远，再检查新旧两个空球能否覆盖这段距离。如果两球之间留下缝隙，试探点前方的界面可能已被跳过，需撤销该步并恢复保守推进。对照伪代码辨认何时接受试探步。</p>
+
+<h2 id="section-3">3 · 屏幕空间候选点（第 4–6 页）</h2>
+
+<p>擦边光线可能在步数耗尽前一直逼近零面。算法结合光线参数和像素覆盖角估计候选点投影到屏幕后的误差，保留较合适的候选点。投影误差小仍允许世界坐标中的命中位置有偏差。</p>
+
+<h2 id="section-4">4 · 二次射线自交（第 6–8 页）</h2>
+
+<p>从近似命中点发出反射或折射射线时，一个固定偏移难以兼顾大尺度模型和细小特征。动态偏移用当前场值与最小容差决定移动量，并考虑新射线应位于表面的哪一侧。</p>
+
+<h2 id="section-5">5 · 减少不连续伪影（第 8 页）</h2>
+
+<p>相邻像素可能挑出深度不同的候选点，形成可见跳变。文中用定点迭代改善这种图像伪影。评估时应同时观察深度连续性和与真实交点的距离。</p>
+
+<h2 id="section-6">6 · 凸物体优化（第 8–9 页）</h2>
+
+<p>凸物体与一条直线的交集是一个区间。配合包围体和内外状态，可以从合适的一端开始追踪。带孔物体或多层结构破坏此前提，读图时可画一条穿过空腔的射线检验。</p>
+
+<h2 id="section-7">7 · 实验结果（第 9–13 页）</h2>
+
+<p>作者用渲染场景检验迭代数、运行成本和视觉质量。观察难以收敛的轮廓像素和二次射线，比仅看平均帧率更容易看出各项改动解决了什么。</p>
+
+<h2 id="exercise">检查一次过松弛试探</h2>
+<p>设旧点的安全半径为 1，试探点沿射线前进了 1.5。如果新半径为 0.7，两个开放安全球在射线上有重叠，试探段受到覆盖。如果新半径只有 0.3，就有 0.2 的空档，必须回退。</p>
+<p>把这个几何判据与屏幕候选判据写成两列：前者问途中是否可能存在界面，后者问落在像素覆盖范围内的表面是否可能贡献图像。记录各自需要的输入量。</p>
+<h2 id="section-8">总结与展望</h2>
+
+<p>可迁移到几何跟踪的是有覆盖证明的步进。下一步可在同一条近切射线上分别记录像素误差、方向命中误差和是否穿透薄层，观察三种判据何时分歧。</p>
+
+<h2 id="section-9">对应 demo 与源码</h2>
+
+<p>关联练习：网格 demo 含球追踪与参考求根，可对比停止误差；它没有实现本文全部过松弛、动态偏移和屏幕候选策略。</p>
+
+<ul>
+  <li><a href="../code/sdf-ray-tracing/sdf_grid.html#first_root">sdf_grid.py · first_root</a></li>
+  <li><a href="../labs/sdf-ray-tracing.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-10">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://doi.org/10.1080/2165347X.2015.1033069">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/supporting-papers.html">Supporting Papers: Proposal Reading Annotations</a></li>
+</ul>
+    </main>
+  </body>
+</html>

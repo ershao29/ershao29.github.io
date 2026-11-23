@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Computation of the Signed Distance Function to a Discrete Contour on Adapted Triangulation | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Computation of the Signed Distance Function to a Discrete Contour on Adapted Triangulation</h1>
+        <p>Dapogny · Frey · 在非贴体网格上构造距离场</p>
+<a href="https://www.ljll.fr/hecht/ftp/Mireille-Haddad/distance.pdf">打开论文原文或出版记录</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1 · 引言（第 1–2 页）</a></li>
+  <li><a href="#section-2">2 · 距离函数预备知识（第 2–4 页）</a></li>
+  <li><a href="#section-3">3 · 特征线（第 4–7 页）</a></li>
+  <li><a href="#section-4">4 · 数值算法（第 7–10 页）</a></li>
+  <li><a href="#section-5">5 · 网格自适应（第 9–15 页）</a></li>
+  <li><a href="#section-6">6 · 重初始化（第 15 页）</a></li>
+  <li><a href="#section-7">7 · 黎曼距离（第 15–16 页）</a></li>
+  <li><a href="#section-8">8 · 数值实验（第 16–23 页）</a></li>
+  <li><a href="#exercise">检查薄层是否消失</a></li>
+  <li><a href="#section-9">总结与展望</a></li>
+  <li><a href="#section-10">对应 demo 与源码</a></li>
+  <li><a href="#section-11">原文与配套笔记</a></li>
+</ul>
+</details>
+<h2 id="section-1">1 · 引言（第 1–2 页）</h2>
+
+<p>输入有两套几何：给定边界的线段或三角片，以及承载数值场的背景网格。目标是在后者的顶点上求有符号距离，再由分片线性插值重建零面。</p>
+
+<h2 id="section-2">2 · 距离函数预备知识（第 2–4 页）</h2>
+
+<p>离开边界后，沿光滑法线走一步，距离相应改变一步；到骨架时可能同时出现多个最近边界点。理解这个例外才能理解为什么后面要保留相邻单元的多种梯度。</p>
+
+<h2 id="section-3">3 · 特征线（第 4–7 页）</h2>
+
+<p>从非稳态 Eikonal 方程沿特征线回溯，用上一个伪时间层的插值加上有符号增量，得到当前节点的候选值。回溯点可能越过当前单元，须找出真正包含它的网格单元。</p>
+
+<h2 id="section-4">4 · 数值算法（第 7–10 页）</h2>
+
+<p>先标出所有被边界切过的单元，为其顶点求到完整边界的最近距离并确定符号。其余顶点从各邻接单元接收传播值，外部取较小者，内部取较大者。迭代残差只能说明更新趋稳，绝对误差要另测。</p>
+
+<h2 id="section-5">5 · 网格自适应（第 9–15 页）</h2>
+
+<p>线性插值能精确重建仿射函数，因此恢复 Hessian，以曲率较大的方向优先加密。分别检查场值误差与零面位置误差：重建出来的点都接近边界，并不能排除一个很小的边界分支整体消失。</p>
+
+<h2 id="section-6">6 · 重初始化（第 15 页）</h2>
+
+<p>以当前零面重新建立距离，有助于维持 level set 计算中的距离性质。重复重建时应记录界面漂移、体积和薄层厚度，才能衡量累积影响。</p>
+
+<h2 id="section-7">7 · 黎曼距离（第 15–16 页）</h2>
+
+<p>用正定度量定义长度以后，特征方向也要随逆度量改变。这里的度量决定目标距离；上一章的网格度量只是为了提高欧氏距离的近似精度。</p>
+
+<h2 id="section-8">8 · 数值实验（第 16–23 页）</h2>
+
+<p>二维和三维算例展示方向性加密怎样把节点放到弯曲部位。看 Wheel 等例子时分别考察背景网格、重建曲面和尖锐特征；三者的质量指标并不相同。</p>
+
+<h2 id="exercise">检查薄层是否消失</h2>
+<p>在一个背景三角形内部画一个小圆，使圆完全不接触三条边。三个顶点都得到正的精确有符号距离，顶点值的线性插值在整个单元中也为正，重建场找不到圆。</p>
+<p>把网格加密到边界两侧都有顶点，再分别测节点距离误差和重建轮廓到原圆的双向距离。这样可以判断改进来自传播还是几何分辨率。</p>
+<h2 id="section-9">总结与展望</h2>
+
+<p>传播、自适应和界面重建各有独立的误差来源。可以给定解析薄壳，逐步缩小厚度，同时记录两向边界距离与壳体积，找出首次丢层的分辨率。</p>
+
+<h2 id="section-10">对应 demo 与源码</h2>
+
+<p>关联练习：规则网格的采样与误差实验可用作对照；现有代码未实现论文的非结构网格传播和各向异性重剖分。</p>
+
+<ul>
+  <li><a href="../code/dagmc-sdf/demo.html#error_experiment">demo.py · error_experiment</a></li>
+  <li><a href="../labs/dagmc-sdf.html">实验步骤、完整代码包和归档结果</a></li>
+</ul>
+<h2 id="section-11">原文与配套笔记</h2>
+
+<ul>
+  <li><a href="https://www.ljll.fr/hecht/ftp/Mireille-Haddad/distance.pdf">论文原文或出版记录</a></li>
+  <li><a href="../notes/literature/notes/adaptive-signed-distance-computation.html">Signed Distance Computation on Adapted Triangulations</a></li>
+</ul>
+    </main>
+  </body>
+</html>

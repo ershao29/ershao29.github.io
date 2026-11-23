@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DAGMC-SDF Particle Tracking Acceleration | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>DAGMC-SDF Particle Tracking Acceleration</h1>
+        <a href="../../../papers/dagmc-sdf-particle-tracking.html">中文逐章解读</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. What the paper changes</a></li>
+  <li><a href="#section-2">2. Data structure and sign convention</a></li>
+  <li><a href="#section-3">3. Conservative query contracts</a></li>
+  <li><a href="#section-4">4. Interpolation error bounds and corrections</a></li>
+  <li><a href="#section-5">5. Utilization model and cost</a></li>
+  <li><a href="#section-6">6. Historical published performance</a></li>
+  <li><a href="#section-7">7. Demo evidence and limits</a></li>
+  <li><a href="#section-8">8. Chapter map and thesis relevance</a></li>
+</ul>
+</details>
+<p>English summary of Patrick C. Shriwise, Andrew Davis, Lucas J. Jacobson, and Paul P. H. Wilson, <em>Particle Tracking Acceleration via Signed Distance Fields in DAGMC</em>, M&amp;C 2017. <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">Paper source</a>. <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">Conference source</a>. <a href="https://doi.org/10.1016/j.net.2017.08.008">Related journal version</a>.</p>
+
+<p>The local file has a ResearchGate cover followed by ten conference-paper pages. Its cover references the related NET 49(6):1189–1198 journal article, whose title and some experimental details differ. Use conference PDF numbering for the chapter map below. This summary condenses the original Chinese notes, including explicitly identified explanatory extensions.</p>
+
+<p><a href="../../demos/dagmc-sdf/README.html">Demo guide</a> · <a href="../../../code/dagmc-sdf/sdf_preconditioner.html">Algorithms</a> · <a href="../../demos/dagmc-sdf/output/run-report.html">Archived run report</a></p>
+
+<h2 id="section-1">1. What the paper changes</h2>
+
+<p>DAGMC retains the triangulated CAD model and original geometric kernel. A sampled distance field adds a cheap prefilter: when conservative evidence proves that a proposed particle flight cannot cross the current volume boundary, skip an expensive query; otherwise call the original kernel.</p>
+
+<p>This is query preconditioning, not linear-system preconditioning. It neither replaces CAD by a sampled zero surface nor continuously sphere-traces every particle.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Query</th>
+<th>Required answer</th>
+<th>Role of the field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Point containment</td>
+<td>Inside/outside and region ownership</td>
+<td>A certified sign may answer early</td>
+</tr>
+<tr>
+<td>Closest boundary</td>
+<td>Shortest spatial distance</td>
+<td>A lower bound may suffice for safety</td>
+</tr>
+<tr>
+<td>Next surface</td>
+<td>Nearest directional intersection</td>
+<td>Certify that no crossing precedes the next event, otherwise fall back</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Shortest spatial distance and directional hit distance are different. In a sphere, a point at radius <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math> has safety distance <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>−</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">R-r</annotation></semantics></math>, while a ray directed through the center can travel nearly <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mo>+</mo><mi>r</mi></mrow><annotation encoding="application/x-tex">R+r</annotation></semantics></math> before exiting.</p>
+
+<h2 id="section-2">2. Data structure and sign convention</h2>
+
+<p>The implementation uses <strong>positive inside and negative outside</strong>, opposite to the other proposal notes. It samples signed nearest-boundary distances on a regular per-volume grid, using the existing geometry kernel. Shared-interface normals must be interpreted for the current volume, including cavities.</p>
+
+<p>A query reads eight corners and evaluates</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>a</mi><mo>,</mo><mi>b</mi><mo>,</mo><mi>c</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow></munder><msub><mi>b</mi><mi>a</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>u</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>b</mi><mi>b</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>v</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>b</mi><mi>c</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>s</mi><mrow><mi>i</mi><mo>+</mo><mi>a</mi><mo>,</mo><mi>j</mi><mo>+</mo><mi>b</mi><mo>,</mo><mi>k</mi><mo>+</mo><mi>c</mi></mrow></msub><mo>,</mo><mspace width="2.0em"/><msub><mi>b</mi><mn>0</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn><mo>−</mo><mi>t</mi><mo>,</mo><mspace width="0.222em"/><msub><mi>b</mi><mn>1</mn></msub><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mi>t</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\widetilde s(x)=\sum_{a,b,c\in\{0,1\}}
+ b_a(u)b_b(v)b_c(w)s_{i+a,j+b,k+c},\qquad b_0(t)=1-t,\ b_1(t)=t.</annotation></semantics></math></p>
+
+<p>Indexing must subtract the grid origin, support anisotropic spacing, and handle maximum faces without indexing past the final cell. Domain misses require fallback unless a valid enclosing box independently proves outside classification.</p>
+
+<p>The original MOAB structured mesh stores more than a scalar array. Compact origin/spacing/dimensions/value storage and sparse alternatives are future directions.</p>
+
+<h2 id="section-3">3. Conservative query contracts</h2>
+
+<p>Given a valid bound <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo>−</mo><mi>s</mi><mo stretchy="false" form="prefix">|</mo><mo>≤</mo><mi>ϵ</mi></mrow><annotation encoding="application/x-tex">|\widetilde s-s|\le\epsilon</annotation></semantics></math>, define</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>=</mo><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo>−</mo><mi>ϵ</mi><mo>,</mo><mspace width="2.0em"/><mi>H</mi><mo>=</mo><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo>+</mo><mi>ϵ</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">L=\widetilde s-\epsilon,\qquad H=\widetilde s+\epsilon.</annotation></semantics></math></p>
+
+<ul>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">L&gt;0</annotation></semantics></math> certifies inside and gives an interior distance lower bound.</li>
+<li>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>H</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">H&lt;0</annotation></semantics></math> certifies outside.</li>
+<li>An interval containing zero is unresolved, not proof that the point lies on the surface.</li>
+</ul>
+
+<p>A safety-distance API must distinguish a lower bound from an exact kernel distance. The demo returns <code>DistanceAnswer(value, exact, used_field)</code> and honors <code>require_exact=True</code>.</p>
+
+<h3>Single-endpoint and two-endpoint tests</h3>
+
+<p>For candidate length <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ℓ</mi><annotation encoding="application/x-tex">\ell</annotation></semantics></math>, a single-point safe ball certifies the flight if <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>L</mi><mo stretchy="false" form="prefix">(</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><mi>ℓ</mi></mrow><annotation encoding="application/x-tex">L(p)&gt;\ell</annotation></semantics></math>. The paper's central pair test is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><menclose notation="box"><mrow><mi>L</mi><mo stretchy="false" form="prefix">(</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi>L</mi><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><mo stretchy="false" form="postfix">∥</mo><mi>q</mi><mo>−</mo><mi>p</mi><mo stretchy="false" form="postfix">∥</mo><mi>.</mi></mrow></menclose><annotation encoding="application/x-tex">\boxed{L(p)+L(q)&gt;\|q-p\|.}</annotation></semantics></math></p>
+
+<p>With equal error bounds this is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>q</mi><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><mi>ℓ</mi><mo>+</mo><mn>2</mn><mi>ϵ</mi></mrow><annotation encoding="application/x-tex">\widetilde s(p)+\widetilde s(q)&gt;\ell+2\epsilon</annotation></semantics></math>. Interior safe balls cover the entire segment when their radii sum exceeds its length. Failure means the field cannot certify the flight and must fall back; it does not establish a crossing.</p>
+
+<p>Identical endpoint labels alone are unsafe for nonconvex volumes. The demo's hollow box has material points at <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mo>−</mo><mn>2</mn><mo>,</mo><mn>0.17</mn><mo>,</mo><mn>0.11</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(-2,0.17,0.11)</annotation></semantics></math> and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mn>2</mn><mo>,</mo><mn>0.17</mn><mo>,</mo><mn>0.11</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(2,0.17,0.11)</annotation></semantics></math>, yet crosses the inner cavity boundary after distance 1. The pair certificate correctly rejects the shortcut.</p>
+
+<p>Point-containment prefiltering is discussed as a use, but the conference conclusion still lists it as further investigation. Do not imply equal implementation/performance evidence for every query type.</p>
+
+<h2 id="section-4">4. Interpolation error bounds and corrections</h2>
+
+<p>The paper uses the longest voxel diagonal as a conservative geometric bound:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mrow><mi>d</mi><mi>i</mi><mi>a</mi><mi>g</mi></mrow></msub><mo>=</mo><msqrt><mrow><msubsup><mi>h</mi><mi>x</mi><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>h</mi><mi>y</mi><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>h</mi><mi>z</mi><mn>2</mn></msubsup></mrow></msqrt><mo>,</mo></mrow><annotation encoding="application/x-tex">\epsilon_{diag}=\sqrt{h_x^2+h_y^2+h_z^2},</annotation></semantics></math></p>
+
+<p>or <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msqrt><mn>3</mn></msqrt><mi>h</mi></mrow><annotation encoding="application/x-tex">\sqrt3h</annotation></semantics></math> for cubes. The printed formula can be read as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>3</mn><msqrt><mi>h</mi></msqrt></mrow><annotation encoding="application/x-tex">3\sqrt h</annotation></semantics></math>; geometry and dimensions support the diagonal interpretation.</p>
+
+<p>For 1-Lipschitz exact nodal data, nonnegative interpolation weights give</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mover><mi>s</mi><mo accent="true">̃</mo></mover><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>−</mo><mi>s</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">|</mo><mo>≤</mo><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>w</mi><mi>i</mi></msub><mo stretchy="false" form="postfix">∥</mo><msub><mi>v</mi><mi>i</mi></msub><mo>−</mo><mi>x</mi><mo stretchy="false" form="postfix">∥</mo><mo>≤</mo><msub><mi>ϵ</mi><mrow><mi>d</mi><mi>i</mi><mi>a</mi><mi>g</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">|\widetilde s(x)-s(x)|\le\sum_iw_i\|v_i-x\|\le\epsilon_{diag}.</annotation></semantics></math></p>
+
+<p>Known nodal error must be added. A mesh-derived field is bounded relative to that mesh; original CAD approximation requires its own budget.</p>
+
+<p>The notes derive a tighter teaching extension:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mrow><mi>r</mi><mi>m</mi><mi>s</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msqrt><mrow><msubsup><mi>h</mi><mi>x</mi><mn>2</mn></msubsup><mi>u</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>u</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msubsup><mi>h</mi><mi>y</mi><mn>2</mn></msubsup><mi>v</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>v</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msubsup><mi>h</mi><mi>z</mi><mn>2</mn></msubsup><mi>w</mi><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>w</mi><mo stretchy="false" form="postfix">)</mo></mrow></msqrt><mo>+</mo><mi>η</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">\epsilon_{rms}(x)=
+\sqrt{h_x^2u(1-u)+h_y^2v(1-v)+h_z^2w(1-w)}+\eta.</annotation></semantics></math></p>
+
+<p>This is a weighted geometric RMS bound, not an empirical error fit or a paper algorithm. Without nodal error, its maximum is at most half the diagonal. The demo exposes <code>paper</code> and <code>rms</code> modes and an explicit <code>node_error</code>.</p>
+
+<p>The paper's general nominal <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>h</mi><mn>3</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">O(h^3)</annotation></semantics></math> claim for trilinear interpolation should not be adopted: smooth bounded-second-derivative regions typically have <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>h</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">O(h^2)</annotation></semantics></math> error, while nonsmooth SDF regions may require only Lipschitz <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>O</mi><mo stretchy="false" form="prefix">(</mo><mi>h</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">O(h)</annotation></semantics></math> control. Small floating guards in the demo are not full floating-point certification.</p>
+
+<h2 id="section-5">5. Utilization model and cost</h2>
+
+<p>Utilization <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>U</mi><annotation encoding="application/x-tex">U</annotation></semantics></math> is avoided queries divided by all eligible queries of the same type and scope. A simplified query model is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>C</mi><mrow><mi>n</mi><mi>e</mi><mi>w</mi></mrow></msub><mo>≈</mo><msub><mi>C</mi><mi>P</mi></msub><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>U</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>C</mi><mi>R</mi></msub><mo>,</mo><mspace width="2.0em"/><mi>U</mi><msub><mi>C</mi><mi>R</mi></msub><mo>&gt;</mo><msub><mi>C</mi><mi>P</mi></msub></mrow><annotation encoding="application/x-tex">C_{new}\approx C_P+(1-U)C_R,
+\qquad UC_R&gt;C_P</annotation></semantics></math></p>
+
+<p>for a benefit. Including build cost requires <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo stretchy="false" form="prefix">(</mo><mi>U</mi><msub><mi>C</mi><mi>R</mi></msub><mo>−</mo><msub><mi>C</mi><mi>P</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>&gt;</mo><msub><mi>C</mi><mi>B</mi></msub></mrow><annotation encoding="application/x-tex">N(UC_R-C_P)&gt;C_B</annotation></semantics></math>. Retained and skipped queries can have different costs, so call-count savings need not predict time savings. Vacuum flights usually require an actual boundary event and may gain little.</p>
+
+<p>For uniformly distributed starting points in a radius-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>R</mi><annotation encoding="application/x-tex">R</annotation></semantics></math> sphere, independent isotropic directions, exact distances, and fixed length <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>, the pair criterion reduces to</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>+</mo><msqrt><mrow><msup><mi>r</mi><mn>2</mn></msup><mo>+</mo><msup><mi>d</mi><mn>2</mn></msup><mo>+</mo><mn>2</mn><mi>r</mi><mi>d</mi><mo>cos</mo><mi>α</mi></mrow></msqrt><mo>+</mo><mi>d</mi><mo>&lt;</mo><mn>2</mn><mi>R</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">r+\sqrt{r^2+d^2+2rd\cos\alpha}+d&lt;2R.</annotation></semantics></math></p>
+
+<p>The resulting ideal utilization is</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mrow><mi>f</mi><mi>i</mi><mi>x</mi><mi>e</mi><mi>d</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>d</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left"><mn>1</mn><mo>−</mo><mn>3</mn><mi>d</mi><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>2</mn><mi>R</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><msup><mi>d</mi><mn>2</mn></msup><mi>/</mi><mo stretchy="false" form="prefix">(</mo><mn>2</mn><msup><mi>R</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mtd><mtd columnalign="left"><mn>0</mn><mo>≤</mo><mi>d</mi><mo>&lt;</mo><mi>R</mi><mo>,</mo></mtd></mtr><mtr><mtd columnalign="left"><mn>0</mn><mo>,</mo></mtd><mtd columnalign="left"><mi>d</mi><mo>≥</mo><mi>R</mi><mi>.</mi></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">U_{fixed}(d)=
+\begin{cases}
+1-3d/(2R)+d^2/(2R^2),&amp;0\le d&lt;R,\\0,&amp;d\ge R.
+\end{cases}</annotation></semantics></math></p>
+
+<p>Examples are 0.855 at <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>/</mi><mi>R</mi><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">d/R=0.1</annotation></semantics></math>, 0.375 at 0.5, and zero at 1. Sample radius as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><msup><mi>ξ</mi><mrow><mn>1</mn><mi>/</mi><mn>3</mn></mrow></msup></mrow><annotation encoding="application/x-tex">R\xi^{1/3}</annotation></semantics></math>, not uniformly; sample cosine rather than polar angle uniformly.</p>
+
+<p>For exponential flights with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mi>λ</mi><mi>/</mi><mi>R</mi></mrow><annotation encoding="application/x-tex">a=\lambda/R</annotation></semantics></math>, integrating over length gives</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>U</mi><mrow><mi>e</mi><mi>x</mi><mi>p</mi></mrow></msub><mo stretchy="false" form="prefix">(</mo><mi>a</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn><mo>−</mo><mfrac><mn>3</mn><mn>2</mn></mfrac><mi>a</mi><mo>+</mo><msup><mi>a</mi><mn>2</mn></msup><mo>+</mo><mo stretchy="false" form="prefix">(</mo><mi>a</mi><mi>/</mi><mn>2</mn><mo>−</mo><msup><mi>a</mi><mn>2</mn></msup><mo stretchy="false" form="postfix">)</mo><msup><mi>e</mi><mrow><mo>−</mo><mn>1</mn><mi>/</mi><mi>a</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">U_{exp}(a)=1-\frac32a+a^2+(a/2-a^2)e^{-1/a}.</annotation></semantics></math></p>
+
+<p>This explanatory derivation also corresponds to an additional equation in the journal version, not a numbered conference equation. At <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>a</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">a=1</annotation></semantics></math>, utilization is about 0.31606. Physical radial flight density must not receive an extra <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>d</mi><mn>2</mn></msup><annotation encoding="application/x-tex">d^2</annotation></semantics></math> weight from the spherical Jacobian. Large-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math> evaluation needs protection against cancellation.</p>
+
+<p>These are limits of a particular certificate under specified sampling, not universal query-avoidance bounds. Real collision distributions need not be uniform. Finer grids improve certificates but uniform 3D storage grows approximately as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>h</mi><mrow><mo>−</mo><mn>3</mn></mrow></msup><annotation encoding="application/x-tex">h^{-3}</annotation></semantics></math>.</p>
+
+<h2 id="section-6">6. Historical published performance</h2>
+
+<p>The conference neutron test uses a 10 cm water sphere, central 5 MeV source, 100 million histories, and 0.5 cm spacing. The related journal description names hydrogen; keep the versions separate.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Implementation</th>
+<th align="right">CPU minutes</th>
+<th align="right">Wall minutes</th>
+<th align="right">Utilization</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCNP5</td>
+<td align="right">2.75</td>
+<td align="right">2.75</td>
+<td align="right">—</td>
+</tr>
+<tr>
+<td>DAG-MCNP5</td>
+<td align="right">25.04</td>
+<td align="right">25.13</td>
+<td align="right">—</td>
+</tr>
+<tr>
+<td>DAG-MCNP5 + SDF</td>
+<td align="right">7.15</td>
+<td align="right">7.30</td>
+<td align="right">0.97</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Geometry acceleration is about 3.50× by CPU or 3.44× by wall time. A 97% query-avoidance rate does not imply a 33× application speedup. The paper reports no observed tally differences in this test, not a universal unbiasedness proof.</p>
+
+<p>A photon/secondary-electron Fe/W test has unusually expensive closest-boundary queries:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Implementation</th>
+<th align="right">CPU minutes</th>
+<th align="right">Wall minutes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MCNP6</td>
+<td align="right">0.17</td>
+<td align="right">0.14</td>
+</tr>
+<tr>
+<td>DAG-MCNP6</td>
+<td align="right">1841.33</td>
+<td align="right">1841.33</td>
+</tr>
+<tr>
+<td>DAG-MCNP6 + SDF</td>
+<td align="right">0.48</td>
+<td align="right">0.46</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Its original ratio 2.82 uses CPU time; wall-time ratio to native MCNP6 is about 3.29. The journal adds that a less conservative error estimate was used to limit memory. These extreme results cannot establish a general neutron speedup under a uniform diagonal bound.</p>
+
+<h2 id="section-7">7. Demo evidence and limits</h2>
+
+<p>The independent Python prototype uses AABB BVHs to illustrate the paper's OBB hierarchy, generated closed oriented meshes, analytic probability checks, and simplified exponential-flight random walks. It does not integrate DAGMC, MOAB, MCNP, nuclear data, or electron physics.</p>
+
+<p>The archived run uses seed 20170417, 5,000 samples per condition, and 200 walks per free-path condition. Its 16 existing tests cover primitives/BVH, interpolation, node errors, contracts, cavities, history agreement, and independent utilization integrals. Historical reports found no tested mismatches or bound violations.</p>
+
+<p>For 128-triangle geometry, pair/RMS screening reduced 5,000 ray calls to 2,447 and triangle tests from 21,492 to 13,812. For 512 triangles, ray calls fell to 2,327 but triangle tests only from 16,848 to 15,080. <strong>These small Python benchmarks did not improve total query time</strong>; the field's overhead offset savings. See the <a href="../../demos/dagmc-sdf/output/run-report.html">archived report</a> for original timings.</p>
+
+<p><img src="../../../resources/dagmc-sdf/output/utilization.png" alt="Utilization and field-resolution tradeoff" loading="lazy"></p>
+
+<h2 id="section-8">8. Chapter map and thesis relevance</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Conference section</th>
+<th>Local PDF pages</th>
+<th>Focus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>I–II</td>
+<td>2–3</td>
+<td>Motivation, BVH, implicit fields</td>
+</tr>
+<tr>
+<td>III</td>
+<td>3–5</td>
+<td>Field construction, queries, error bounds</td>
+</tr>
+<tr>
+<td>IV–V</td>
+<td>5–7</td>
+<td>Neutron results and utilization</td>
+</tr>
+<tr>
+<td>VI</td>
+<td>7–9</td>
+<td>Probability model</td>
+</tr>
+<tr>
+<td>VII–VIII</td>
+<td>10</td>
+<td>Charged-particle result and future work</td>
+</tr>
+<tr>
+<td>References</td>
+<td>11</td>
+<td>Background sources</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Promising follow-ups include tighter certified bounds, staged single/pair queries, measured runtime activation, sparse per-volume storage, shared interfaces, and geometry-update invalidation. MOC needs a different execution contract: all valid material/FSR segments and volumes, rather than only certification that a candidate collision occurs first. This paper is direct prior art for conservative prefiltering and a useful reliability pattern for the thesis.</p>
+
+    </main>
+  </body>
+</html>

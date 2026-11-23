@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Source-Code Reading Guide | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Source-Code Reading Guide</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">OpenMC</a></li>
+  <li><a href="#section-2">OpenMOC</a></li>
+  <li><a href="#section-3">Shared implementation questions</a></li>
+</ul>
+</details>
+<p>The two source trees already supplied by the user are preserved under this directory. Internal source paths and upstream documentation remain intact. No transport solver changes, builds, or nuclear-data simulations were performed while organizing the collection.</p>
+
+<h2 id="section-1">OpenMC</h2>
+
+<p><a href="https://github.com/openmc-dev/openmc/blob/b4c1d95d42b9217402e40dd7350cb89751223dcf/README.md">Upstream README</a> · <a href="https://github.com/openmc-dev/openmc/blob/b4c1d95d42b9217402e40dd7350cb89751223dcf/AGENTS.md">Repository instructions</a></p>
+
+<p>The bundled <code>.git_archival.txt</code> reports commit <code>b4c1d95d42b9217402e40dd7350cb89751223dcf</code>, commit date <code>2026-11-08T20:09:37Z</code>, and description <code>v0.16.0-88-gb4c1d95d42b</code>. This is snapshot metadata, not a claim that it is the latest release.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>Reading purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/openmc-dev/openmc/blob/b4c1d95d42b9217402e40dd7350cb89751223dcf/include/openmc/surface.h">include/openmc/surface.h</a></td>
+<td>Surface value, directional distance, normals, boundary state</td>
+</tr>
+<tr>
+<td><a href="https://github.com/openmc-dev/openmc/blob/b4c1d95d42b9217402e40dd7350cb89751223dcf/src/geometry.cpp">src/geometry.cpp</a></td>
+<td>Location and multilevel <code>distance_to_boundary</code> logic</td>
+</tr>
+<tr>
+<td><a href="https://github.com/openmc-dev/openmc/blob/b4c1d95d42b9217402e40dd7350cb89751223dcf/openmc/surface.py">openmc/surface.py</a></td>
+<td>User-facing surface definitions and serialization</td>
+</tr>
+<tr>
+<td><a href="https://github.com/openmc-dev/openmc/tree/b4c1d95d42b9217402e40dd7350cb89751223dcf/docs/source/methods">docs/source/methods</a></td>
+<td>Geometry and Random Ray method context</td>
+</tr>
+<tr>
+<td><a href="https://github.com/openmc-dev/openmc/tree/b4c1d95d42b9217402e40dd7350cb89751223dcf/tests">tests</a></td>
+<td>Existing unit/regression conventions</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Begin by distinguishing true directional distances from conservative safety bounds, then trace parent/lattice restrictions and event selection before considering prefilter insertion. The proposal's online <code>develop</code> observations are historical and must be checked against this snapshot during implementation.</p>
+
+<h2 id="section-2">OpenMOC</h2>
+
+<p><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/README.rst">Upstream README</a></p>
+
+<p>The supplied OpenMOC directory does not provide the same archival commit record. Its content hashes are recorded in the collection inventory; pin an explicit upstream version before implementation. Do not equate it with the separate remote CORE-MOC repository discussed in the grant analysis.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>Reading purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Surface.h">src/Surface.h</a></td>
+<td>Implicit evaluation and intersection contracts</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Region.cpp">src/Region.cpp</a></td>
+<td>Halfspaces, Boolean containment, and region semantics</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">src/Geometry.cpp</a></td>
+<td>
+<code>segmentize3D</code>, <code>segmentizeExtruded</code>, and source-region coupling</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.h">src/TrackGenerator3D.h</a></td>
+<td>Three-dimensional track modes</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp">src/TrackGenerator3D.cpp</a></td>
+<td>Track generation and extruded-path assumptions</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator.cpp">src/TrackGenerator.cpp</a></td>
+<td>Segmentation and volume-related workflows</td>
+</tr>
+<tr>
+<td><a href="https://github.com/mit-crpg/OpenMOC/tree/develop/docs">docs</a></td>
+<td>Upstream methods and implementation documentation</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Use the explicit 3D segmentation path as the first investigation target for continuously deformed geometry. Keep material regions, FSR IDs, volumes, and boundary connections consistent before changing sweeps or enabling acceleration.</p>
+
+<h2 id="section-3">Shared implementation questions</h2>
+
+<ul>
+<li>Which layer owns material/instance labels and shared-interface identity?</li>
+<li>How are origin-on-boundary, tangent, coplanar, and unresolved events represented?</li>
+<li>Which coordinate transformations preserve distance and ray parameters?</li>
+<li>Which OTF assumptions rely on axial extrusion?</li>
+<li>What independent reference checks complete material/FSR sequences and volumes?</li>
+</ul>
+
+<p>The <a href="../research-proposal/technical-roadmap.html">technical roadmap</a> specifies proposed experiments. Existing teaching demos are independent of these solver snapshots.</p>
+
+    </main>
+  </body>
+</html>

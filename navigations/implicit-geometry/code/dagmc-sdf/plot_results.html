@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>plot_results.py | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>plot_results.py</h1>
+        <a href="../../labs/dagmc-sdf.html">dagmc-sdf 实验导航</a> · <a href="../../downloads/dagmc-sdf.zip">下载完整可运行代码</a>
+      </header>
+<pre class="source"><code>#!/usr/bin/env python3
+"""Optional matplotlib plots; numerical demo and tests need no third-party package."""
+import argparse
+import csv
+import json
+from pathlib import Path
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+import numpy as np
+
+from sdf_preconditioner import Sphere, UniformGrid, alpha_min
+
+
+<span id="save">def save(fig, out, name):</span>
+    fig.savefig(out/f'{name}.png', dpi=180, bbox_inches='tight')
+    fig.savefig(out/f'{name}.svg', bbox_inches='tight')
+    plt.close(fig)
+
+
+<span id="main">def main():</span>
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--output', type=Path, default=Path(__file__).parent/'output')
+    out = p.parse_args().output.resolve()
+    with (out/'utilization.csv').open() as f:
+        rows = [{k: (v if k in ('distribution', 'error_mode') else float(v))
+                 for k, v in row.items()} for row in csv.DictReader(f)]
+    metrics = json.loads((out/'metrics.json').read_text())
+    plt.rcParams.update({'font.size': 10, 'axes.spines.top': False,
+                         'axes.spines.right': False, 'svg.fonttype': 'none'})
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4.2), layout='constrained')
+    for ax, distribution in zip(axes, ('fixed', 'exponential')):
+        subset = [r for r in rows if r['distribution'] == distribution]
+        base = [r for r in subset if r['cells'] == 16 and r['error_mode'] == 'paper']
+        x = [r['flight_over_R'] for r in base]
+        ax.plot(x, [r['ideal_theory'] for r in base], 'k-', lw=2, label='Exact-field theory')
+        ax.errorbar(x, [r['ideal_mc'] for r in base],
+                    yerr=[1.96*r['ideal_standard_error'] for r in base],
+                    fmt='ko', ms=3, capsize=2, label='Uniform-point MC (95%)')
+        for n, color in zip((8, 16, 32), ('#e58a2b', '#246bb0', '#29824c')):
+            series = [r for r in subset if r['cells'] == n and r['error_mode'] == 'paper']
+            ax.plot(x, [r['pair_utilization'] for r in series], '--', color=color,
+                    label=f'Pair, diagonal bound, n={n}')
+        extension = [r for r in subset if r['cells'] == 16 and r['error_mode'] == 'rms']
+        ax.plot(x, [r['pair_utilization'] for r in extension], ':s', ms=3,
+                color='#963b94', label='Pair, RMS bound, n=16 (extension)')
+        ax.set(xlabel='Fixed distance / R' if distribution == 'fixed' else 'Mean free path / R',
+               ylabel='Avoided-ray fraction', ylim=(-.025, 1.025),
+               title=f'{distribution.capitalize()} flight length')
+        ax.grid(alpha=.22)
+    axes[1].legend(fontsize=8, loc='upper right')
+    fig.suptitle(f"SDF prefilter utilization | {metrics['samples']:,} independent points / condition")
+    save(fig, out, 'utilization')
+
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.8), layout='constrained')
+    # Ball coverage is illustrated in 2D; the certificate is dimension-independent.
+    cases = [((-.4, 0), (.25, .1), 'A: two interior balls cover the segment'),
+             ((-.72, .28), (.72, .28), 'B: safe chord, certificate inconclusive'),
+             ((-.4, 0), (1.12, .15), 'C: boundary crossing; fallback required')]
+    for ax, (start, end, title) in zip(axes, cases):
+        ax.add_patch(Circle((0, 0), 1, fill=False, lw=2, color='#283d50'))
+        for point, color, label in ((start, '#b13535', 'p'), (end, '#24724a', 'q')):
+            rad = 1-np.linalg.norm(point)
+            if rad &gt; 0:
+                ax.add_patch(Circle(point, rad, fill=False, ls='--', color=color, alpha=.8))
+            ax.plot(*point, 'o', color=color)
+            ax.annotate(label, point, xytext=(4, 5), textcoords='offset points')
+        ax.plot([start[0], end[0]], [start[1], end[1]], color='#20252b')
+        ax.set(xlim=(-1.25, 1.3), ylim=(-1.15, 1.15), title=title, aspect='equal')
+        ax.axis('off')
+    save(fig, out, 'ball-certificate')
+
+    shape = Sphere(1.)
+    grid = UniformGrid.build(shape.bounds, 12, shape.inside_distance)
+    coords = np.linspace(-1., 1., 151)
+    values = np.array([[grid.sample((x, y, 0.)).value for x in coords] for y in coords])
+    truth = np.array([[shape.value((x, y, 0.)) for x in coords] for y in coords])
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.8), layout='constrained')
+    for ax, field, title, cm in zip(axes, (truth, values, np.abs(values-truth)),
+                                  ('Exact inside-positive distance', 'Trilinear distance estimate',
+                                   'Absolute interpolation error'), ('RdBu', 'RdBu', 'magma')):
+        im = ax.imshow(field, extent=(-1, 1, -1, 1), origin='lower', cmap=cm)
+        ax.add_patch(Circle((0, 0), 1, fill=False, lw=1., color='black'))
+        ax.set(title=title, xlabel='x / R', ylabel='y / R', aspect='equal')
+        fig.colorbar(im, ax=ax, shrink=.78)
+    save(fig, out, 'distance-field')
+
+    fig, ax = plt.subplots(figsize=(7.3, 4.3), layout='constrained')
+    ds = np.linspace(0, 1., 301)
+    for r in (.15, .3, .45, .6, .75, .9):
+        ax.plot(ds, [np.degrees(alpha_min(r, d, 1.)) for d in ds], label=f'r/R={r:g}')
+    ax.set(xlabel='Flight length / R', ylabel='Minimum departure angle (degrees)',
+           title='Direction restriction for the ideal two-point certificate', ylim=(-2, 183))
+    ax.legend(ncol=2)
+    ax.grid(alpha=.2)
+    save(fig, out, 'angle-restriction')
+
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.9), layout='constrained')
+    bench = [r for b in metrics['benchmarks'] for r in b['results']
+             if r['geometry'] == 'triangle_sphere_512']
+    labels = [r['mode']+'\n'+r['error_mode'] for r in bench]
+    axes[0].bar(labels, [r['triangle_tests'] for r in bench], color='#3275a8')
+    axes[1].bar(labels, [r['seconds'] for r in bench], color='#3275a8')
+    axes[0].set(ylabel='Triangle tests', title='Fallback work on the same triangle mesh')
+    axes[1].set(ylabel='Wall seconds', title='Python query timing (setup excluded)')
+    for ax in axes:
+        ax.grid(axis='y', alpha=.2)
+    save(fig, out, 'mesh-benchmark')
+    print(f'Wrote PNG and SVG plots to {out}')
+
+
+if __name__ == '__main__':
+    main()</code></pre>
+    </main>
+  </body>
+</html>

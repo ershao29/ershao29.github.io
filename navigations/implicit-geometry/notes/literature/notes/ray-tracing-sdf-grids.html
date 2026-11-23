@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ray Tracing of Signed Distance Function Grids | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../../index.html">Home</a> / <a href="../../../../projects.html">Projects</a> / <a href="../../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Ray Tracing of Signed Distance Function Grids</h1>
+        <a href="../../../papers/ray-tracing-signed-distance-grids.html">中文逐章解读</a>
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Problem, contribution, and geometry target</a></li>
+  <li><a href="#section-2">2. Trilinear voxels and ray coordinates</a></li>
+  <li><a href="#section-3">3. Cubic intersection and solver contracts</a></li>
+  <li><a href="#section-4">4. Geometric and continuous shading normals</a></li>
+  <li><a href="#section-5">5. Traversal and published results</a></li>
+  <li><a href="#section-6">6. Demo scope and research relevance</a></li>
+  <li><a href="#section-7">7. Reading map</a></li>
+</ul>
+</details>
+<p>English summary of Herman Hansson-Soderlund, Alex Evans, and Tomas Akenine-Moller, <em>Journal of Computer Graphics Techniques</em> 11(3):94–113 (2022). <a href="https://jcgt.org/published/0011/03/06/">Paper source</a> · <a href="https://jcgt.org/published/0011/03/06/">Journal page</a>.</p>
+
+<p>The local paper has 20 pages; PDF page <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math> corresponds to journal page <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo>+</mo><mn>93</mn></mrow><annotation encoding="application/x-tex">p+93</annotation></semantics></math>. “Ray Tracing” and “Path Tracing” appear in different parts of the file for the same work. This English companion condenses the original Chinese chapter notes.</p>
+
+<p><a href="../../demos/sdf-ray-tracing/README.html">Demo guide</a> · <a href="../../../code/sdf-ray-tracing/sdf_grid.html">Core algorithms</a> · <a href="../../demos/sdf-ray-tracing/output/run-report.html">Archived run</a> · <a href="../../demos/sdf-ray-tracing/output-quantized/run-report.html">Quantized run</a></p>
+
+<h2 id="section-1">1. Problem, contribution, and geometry target</h2>
+
+<p>The input is an already sampled SDF grid. The paper intersects its <strong>piecewise-trilinear zero surface</strong> directly, constructs continuous shading normals, and compares traversal/root combinations. It does not construct the original field or reinitialize distance.</p>
+
+<p>Distinguish original continuous geometry, the sampled/reconstructed zero surface, and finite-precision root results. Accurate roots of the reconstructed field cannot recover thin features lost during sampling.</p>
+
+<p>The cubic ray equation and derivative subdivision have earlier foundations in Parker et al. (1998) and Marmitt et al. (2004). Contributions include reorganized coefficient/gradient arithmetic, dual-voxel continuous normals, opaque-shadow early termination, and systematic traversal comparisons.</p>
+
+<h2 id="section-2">2. Trilinear voxels and ray coordinates</h2>
+
+<p>For local <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo>∈</mo><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><msup><mo stretchy="false" form="postfix">]</mo><mn>3</mn></msup></mrow><annotation encoding="application/x-tex">(x,y,z)\in[0,1]^3</annotation></semantics></math>,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo>,</mo><mi>y</mi><mo>,</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><munder><mo>∑</mo><mrow><mi>i</mi><mo>,</mo><mi>j</mi><mo>,</mo><mi>k</mi><mo>∈</mo><mo stretchy="false" form="prefix">{</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">}</mo></mrow></munder><msub><mi>b</mi><mi>i</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>b</mi><mi>j</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>b</mi><mi>k</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>z</mi><mo stretchy="false" form="postfix">)</mo><msub><mi>s</mi><mrow><mi>i</mi><mi>j</mi><mi>k</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">F(x,y,z)=\sum_{i,j,k\in\{0,1\}}b_i(x)b_j(y)b_k(z)s_{ijk}.</annotation></semantics></math></p>
+
+<p>Nonnegative weights imply that a voxel's zero set is nonempty exactly when</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>min</mo><msub><mi>s</mi><mrow><mi>i</mi><mi>j</mi><mi>k</mi></mrow></msub><mo>≤</mo><mn>0</mn><mo>≤</mo><mo>max</mo><msub><mi>s</mi><mrow><mi>i</mi><mi>j</mi><mi>k</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\min s_{ijk}\le0\le\max s_{ijk}.</annotation></semantics></math></p>
+
+<p>This tests the reconstructed voxel, not whether a particular ray hits it or whether original subvoxel features existed.</p>
+
+<p>Intersect the voxel box first and clip to the user's finite query range. For valid start parameter <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>t</mi><mn>0</mn></msub><annotation encoding="application/x-tex">t_0</annotation></semantics></math>, voxel origin <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math>, and dimensions <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>,</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>o</mi><msub><mi>′</mi><mi>a</mi></msub><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>o</mi><mi>a</mi></msub><mo>+</mo><msub><mi>t</mi><mn>0</mn></msub><msub><mi>d</mi><mi>a</mi></msub><mo>−</mo><msub><mi>b</mi><mi>a</mi></msub><mo stretchy="false" form="postfix">)</mo><mi>/</mi><msub><mi>h</mi><mi>a</mi></msub><mo>,</mo><mspace width="2.0em"/><mi>d</mi><msub><mi>′</mi><mi>a</mi></msub><mo>=</mo><msub><mi>d</mi><mi>a</mi></msub><mi>/</mi><msub><mi>h</mi><mi>a</mi></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">o'_a=(o_a+t_0d_a-b_a)/h_a,\qquad d'_a=d_a/h_a.</annotation></semantics></math></p>
+
+<p>Do not renormalize <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>′</mi></mrow><annotation encoding="application/x-tex">d'</annotation></semantics></math>: preserving it keeps the original parameter. A nonunit world direction is allowed, but then <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math> is not physical distance. Slab tests need explicit zero-direction handling.</p>
+
+<h2 id="section-3">3. Cubic intersection and solver contracts</h2>
+
+<p>Substitution yields <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><msub><mi>c</mi><mn>3</mn></msub><msup><mi>t</mi><mn>3</mn></msup><mo>+</mo><msub><mi>c</mi><mn>2</mn></msub><msup><mi>t</mi><mn>2</mn></msup><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mi>t</mi><mo>+</mo><msub><mi>c</mi><mn>0</mn></msub></mrow><annotation encoding="application/x-tex">g(t)=c_3t^3+c_2t^2+c_1t+c_0</annotation></semantics></math>. The paper reports reducing coefficient arithmetic from roughly 161 to 37 operations when an FMA counts as one; that is not an application speedup factor.</p>
+
+<p>The original notes identify an overall sign difference: printed equation (2), interpreted with equation (3), defines <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>G</mi><mo>=</mo><mo>−</mo><mi>F</mi></mrow><annotation encoding="application/x-tex">G=-F</annotation></semantics></math>. Roots agree, but sign classification and normals must use a consistent convention. The demo uses <code>trilinear()</code> for negative-inside <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>, and <code>cubic_coefficients()</code> for <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>F</mi></mrow><annotation encoding="application/x-tex">-F</annotation></semantics></math>.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Solver</th>
+<th>Procedure</th>
+<th>Reliability requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>Analytic real cubic roots</td>
+<td>Handle lower-degree degeneracy, repeated roots, cancellation, range filtering; select nearest valid root</td>
+</tr>
+<tr>
+<td>M</td>
+<td>Derivative partition plus repeated linear interpolation</td>
+<td>Keep the first valid bracket; guard stagnation</td>
+</tr>
+<tr>
+<td>NR</td>
+<td>Derivative partition plus Newton</td>
+<td>Keep the bracket; guard small derivatives and escaping updates</td>
+</tr>
+<tr>
+<td>ST</td>
+<td>Conservative local stepping</td>
+<td>Use a valid derivative/distance bound and report budget exhaustion</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For M/NR, solve</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>g</mi><mi>′</mi><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>3</mn><msub><mi>c</mi><mn>3</mn></msub><msup><mi>t</mi><mn>2</mn></msup><mo>+</mo><mn>2</mn><msub><mi>c</mi><mn>2</mn></msub><mi>t</mi><mo>+</mo><msub><mi>c</mi><mn>1</mn></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">g'(t)=3c_3t^2+2c_2t+c_1=0</annotation></semantics></math></p>
+
+<p>and split the valid range at its real critical points. Process monotone intervals in increasing order. Endpoint sign alone misses multiple crossings: <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo>−</mo><mn>0.2</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo>−</mo><mn>0.4</mn><mo stretchy="false" form="postfix">)</mo><mo stretchy="false" form="prefix">(</mo><mi>t</mi><mo>−</mo><mn>1.4</mn><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(t-0.2)(t-0.4)(t-1.4)</annotation></semantics></math> has same-sign endpoints on <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">[</mo><mn>0</mn><mo>,</mo><mn>1</mn><mo stretchy="false" form="postfix">]</mo></mrow><annotation encoding="application/x-tex">[0,1]</annotation></semantics></math> but two interior roots. Test critical points themselves for tangent roots.</p>
+
+<p>The demo safeguards interpolation/Newton with bracketing and occasional bisection, scales parameters/coefficients, and records exhaustion. These are explicit teaching robustness additions, not verbatim reproduction of the paper listing or formal interval certification.</p>
+
+<p><img src="../../../resources/sdf-ray-tracing/output/cubic.svg" alt="Multiple roots between same-sign endpoints" loading="lazy"></p>
+
+<h3>Opaque-shadow shortcut</h3>
+
+<p>Once a valid clipped interval proves a root exists before the light, a Boolean occlusion query can return without refining the root. Clip first; a root beyond the light does not occlude it. In the demo, <code>any_hit=True</code> can return a bracket endpoint as <code>Hit.t</code>; this is an existence witness and must not be used for physical length or surface position.</p>
+
+<p>The optional solid-voxel capping heuristic can treat an interior box entry as a hit to reduce visible cracks. Such a box face need not be the zero surface; the demo leaves this disabled for exact zero-surface query semantics.</p>
+
+<h2 id="section-4">4. Geometric and continuous shading normals</h2>
+
+<p>The analytic gradient components are bilinear interpolations of corner-value differences. Convert to physical coordinates with</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>∇</mi><mi>p</mi></msub><mi>F</mi><mo>=</mo><mo stretchy="false" form="prefix">(</mo><msub><mi>F</mi><mi>x</mi></msub><mi>/</mi><msub><mi>h</mi><mi>x</mi></msub><mo>,</mo><msub><mi>F</mi><mi>y</mi></msub><mi>/</mi><msub><mi>h</mi><mi>y</mi></msub><mo>,</mo><msub><mi>F</mi><mi>z</mi></msub><mi>/</mi><msub><mi>h</mi><mi>z</mi></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo><mspace width="2.0em"/><msub><mi>n</mi><mi>g</mi></msub><mo>=</mo><msub><mi>∇</mi><mi>p</mi></msub><mi>F</mi><mi>/</mi><mo stretchy="false" form="postfix">∥</mo><msub><mi>∇</mi><mi>p</mi></msub><mi>F</mi><mo stretchy="false" form="postfix">∥</mo><mi>.</mi></mrow><annotation encoding="application/x-tex">\nabla_pF=(F_x/h_x,F_y/h_y,F_z/h_z),\qquad
+n_g=\nabla_pF/\|\nabla_pF\|.</annotation></semantics></math></p>
+
+<p>General instance transforms use the inverse transpose. Shared face samples make <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math> continuous across cells, but transverse derivatives can jump.</p>
+
+<p>The proposed continuous normal selects eight neighboring primal voxels associated with a dual voxel, evaluates each analytic <strong>unit</strong> normal at the same point (extrapolating seven as needed), and blends with trilinear weights, followed by normalization. Do not clamp extrapolated coordinates or replace the construction by normals at voxel centers.</p>
+
+<p>Regular local normals and a nonzero blended result permit continuous shading normals. This does not make the reconstructed geometry differentiable, nor guarantee continuity at singular configurations. The demo falls back to the current voxel normal when the blend nearly vanishes.</p>
+
+<p>Up to a 3×3×3 sample neighborhood supports a fixed point; 4×4×4 samples around a voxel cover all possible local hit neighborhoods. This explains SVS data redundancy. Empty-neighbor scalar data may still be needed for normals.</p>
+
+<p>Smoothed shading normals generally differ from true geometric normals. Reflection physics, PDE conditions, projections, and surface tallies require their own justification before adopting them.</p>
+
+<p><img src="../../../resources/sdf-ray-tracing/output/comparison.png" alt="Analytic, finite-difference, and continuous shading normals" loading="lazy"></p>
+
+<h2 id="section-5">5. Traversal and published results</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Structure</th>
+<th>Organization</th>
+<th>Candidate processing</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GST</td>
+<td>Dense field with lower-resolution hierarchy</td>
+<td>Shader sphere tracing/local intersections</td>
+</tr>
+<tr>
+<td>SVS</td>
+<td>AABB per nonempty voxel, outer BVH</td>
+<td>Hardware traversal, custom intersection</td>
+</tr>
+<tr>
+<td>SBS</td>
+<td>7³-voxel bricks with 8³ samples, outer BVH</td>
+<td>Hardware traversal, brick DDA, local roots</td>
+</tr>
+<tr>
+<td>SVO</td>
+<td>Sparse voxel octree</td>
+<td>Shader traversal and local roots</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>AABB hits and nonempty cells are candidates, not surface hits. DDA must advance all tied axes at edges/corners. Quantization scales differ across the paper's structures; GST's 2.5-diagonal encoding should not be confused with the sparse structure's 0.5-diagonal scale.</p>
+
+<p>The original tests use an RTX 3090 and four scenes in an internal Falcor-based path tracer, with complete frame times. SVS with A or M is fastest overall in those tests; SBS is attractive under memory constraints. Selected SVS-A/SVS-M results are:</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Combination (ms)</th>
+<th align="right">Cheese</th>
+<th align="right">Goblin</th>
+<th align="right">Heads</th>
+<th align="right">Ladies</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SVS-A</td>
+<td align="right">9.7</td>
+<td align="right">9.7</td>
+<td align="right">17.3</td>
+<td align="right">16.1</td>
+</tr>
+<tr>
+<td>SVS-M</td>
+<td align="right">9.9</td>
+<td align="right">9.8</td>
+<td align="right">17.1</td>
+<td align="right">16.2</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Continuous normals add roughly 1–7% to total frame time in reported combinations; that is not isolated normal-function cost. Shadow early termination was measured with NR and has scene/structure-dependent savings. The original 50-iteration and <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>4</mn><mo>×</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>3</mn></mrow></msup></mrow><annotation encoding="application/x-tex">4\times10^{-3}</annotation></semantics></math> image-quality settings are not universal physical-distance tolerances.</p>
+
+<p>Future directions include BC4 compression with shared-boundary consistency, ray-cone-dependent normal quality, and geometric LOD. Changing normals and changing geometry have different consequences. Statements about DXR limitations in this paper describe its 2022 environment.</p>
+
+<h2 id="section-6">6. Demo scope and research relevance</h2>
+
+<p>The independent standard-library Python prototype implements trilinear/cubic queries, derivative partitioning, software BVH/brick DDA/octree traversal, normal comparison, quantization, and opaque shadows. Its 12 existing tests cover known roots, degeneracy, gradients, traversal agreement, edge/parallel rays, interior origins, anisotropic voxels, normals, shared quantized faces, and shadow clipping.</p>
+
+<p>The common reference is DDA+A on the <strong>same trilinear field</strong>. GST/ST are finite-budget approximate comparisons. There is no RTX/DXR acceleration, author asset replication, complete multibounce path tracer, BC4 implementation, or 2023 tight-box extension. CPU timings cannot reproduce GPU rankings.</p>
+
+<p>For neutron transport, useful components are local root completeness, traversal organization, quantization/error bookkeeping, and explicit distinction between geometry and shading. Add source/material labels, certified bounds, shared interfaces, all crossings, conservation, and physical error control. Boolean shadow witnesses cannot substitute for MOC segment endpoints.</p>
+
+<h2 id="section-7">7. Reading map</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Paper section</th>
+<th>PDF pages</th>
+<th>Focus</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Introduction</td>
+<td>1–2</td>
+<td>Grid geometry and prior work</td>
+</tr>
+<tr>
+<td>Analytic Voxel Intersection</td>
+<td>2–6</td>
+<td>Cubics, coefficient organization, A/M/NR, shadows</td>
+</tr>
+<tr>
+<td>Normals</td>
+<td>6–9</td>
+<td>Gradients, dual voxels, continuity</td>
+</tr>
+<tr>
+<td>Results</td>
+<td>9–16</td>
+<td>Traversal, solver combinations, memory, timing</td>
+</tr>
+<tr>
+<td>Conclusion/Future Work</td>
+<td>16</td>
+<td>Compression, ray cones, LOD</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Follow-up work on tighter voxel bounds, compression, differentiable SDF rendering, and transport-safe intersections should retain separate evidence labels. Rendering quality and transport correctness require different validation criteria.</p>
+
+    </main>
+  </body>
+</html>

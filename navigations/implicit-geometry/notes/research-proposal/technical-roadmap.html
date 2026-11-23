@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Technical Roadmap and Validation Plan | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Technical Roadmap and Validation Plan</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">1. Hypothesis and scope</a></li>
+  <li><a href="#section-2">2. Architecture: shared geometry and multiple query workloads</a></li>
+  <li><a href="#section-3">3. OpenMC implementation routes</a></li>
+  <li><a href="#section-4">4. OpenMOC implementation route</a></li>
+  <li><a href="#section-5">5. Validation ladder and cases</a></li>
+  <li><a href="#section-6">6. Required metrics</a></li>
+  <li><a href="#section-7">7. Proposed acceptance targets and error budget</a></li>
+  <li><a href="#section-8">8. Ablations and falsifiable conclusions</a></li>
+  <li><a href="#section-9">9. Proposed 24-month schedule and milestones</a></li>
+  <li><a href="#section-10">10. Risks and alternatives retaining research value</a></li>
+  <li><a href="#section-11">11. Reproducibility checklist</a></li>
+</ul>
+</details>
+<p>Date: November 10, 2026. This is a proposed research plan, not completed simulation results. See <a href="research-directions.html">Research directions</a> for rationale and <a href="evidence-and-sources.html">Evidence and sources</a> for sources.</p>
+
+<h2 id="section-1">1. Hypothesis and scope</h2>
+
+<p>Hypothesis: in cores combining complex deformation, thin material layers, and repeated instances, local implicit programs preserving material semantics and bounded interface queries may be cheaper than fine axial slicing or dense surface meshes at equal transport accuracy. <strong>This hypothesis does not promise acceleration in every scenario.</strong> Analytic CSG may remain fastest for regular planes/cylinders.</p>
+
+<p>Initial restrictions:</p>
+
+<ul>
+<li>Finite domain, finite material set, enumerable solid instances, negative-inside/positive-outside convention, and consistent length units.</li>
+<li>Continuous, piecewise-smooth fields with explicit semantics for periodic seams, nonsmooth Booleans, and contacts.</li>
+<li>Verifiable parameter ranges; reject undeclared overlaps and negative thicknesses.</li>
+<li>Initially static geometry, regionwise constant cross sections, and planar outer boundaries; postpone continuous density, curved reflection, and time-dependent geometry.</li>
+<li>No completeness guarantee for arbitrary black-box functions in finite time. Declare supported function families, degeneracies, and <code>unresolved</code> policies.</li>
+</ul>
+
+<h2 id="section-2">2. Architecture: shared geometry and multiple query workloads</h2>
+
+<pre><code class="language-mermaid">flowchart TD
+    A[Geometry parameters, material regions, instance hierarchy] --&gt; B[Implicit expression graph and shared-interface table]
+    B --&gt; C[Validity domains, interval envelopes, distance bounds, numerical semantics]
+    C --&gt; D[Local expression pruning and CPU compilation]
+    D --&gt; E[Point location, nearest events, complete traversal]
+    E --&gt; F[OpenMC particle-event adapter]
+    E --&gt; G[OpenMOC 3D source-region segmentation]
+    E --&gt; H[Random Ray extension comparison]
+    B --&gt; I[Independent analytic or mesh reference]
+    I --&gt; J[Differential geometry and transport validation]
+    F --&gt; J
+    G --&gt; J
+    H --&gt; J
+    J --&gt; K[Error budgets, cost models, adaptation]
+    K --&gt; C
+</code></pre>
+
+<p>Arrows show proposed dependencies, not existing plugin interfaces. Start with a CPU double-precision reference, then choose SIMD/JIT; add GPU work after performance evidence supports it.</p>
+
+<h3>2.1 Intermediate-representation data</h3>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Data</th>
+<th>Example fields</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model identity</td>
+<td>Parameters, length units, version hash, valid parameter domain</td>
+<td>Reproducibility and cache invalidation</td>
+</tr>
+<tr>
+<td>Field expressions</td>
+<td>Primitives, operators, coordinate maps, shared subexpressions</td>
+<td>Compilation and traceable evaluation</td>
+</tr>
+<tr>
+<td>Mathematical properties</td>
+<td>Continuity, distance class, Lipschitz bound/domain</td>
+<td>Select valid query algorithms</td>
+</tr>
+<tr>
+<td>Material semantics</td>
+<td>Cell/material/instance, both sides of shared interfaces</td>
+<td>Preserve internal interfaces through Booleans</td>
+</tr>
+<tr>
+<td>Source-region semantics</td>
+<td>FSR ID, local partition, volume/statistics</td>
+<td>Segment even within the same material</td>
+</tr>
+<tr>
+<td>Numerical data</td>
+<td>Error envelopes, root intervals, precision, fallback reasons</td>
+<td>Distinguish certified results from heuristics</td>
+</tr>
+<tr>
+<td>Boundary rules</td>
+<td>Transmission, vacuum, reflection/periodicity and pairing</td>
+<td>Determine post-event state</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>For sampled fields, record the target: original CAD, triangle-mesh zero surface, or analytic implicit surface. Their geometry errors have different meanings.</p>
+
+<h3>2.2 Prototype interfaces</h3>
+
+<p>The following is an unimplemented design sketch:</p>
+
+<pre><code class="language-text">GeometryProgram
+  classify(point, direction, previous_event) -&gt; RegionState | Ambiguous
+  enclosure(spatial_domain, parameter_domain) -&gt; FieldEnclosure
+  boundary_lower_bound(point, state, valid_domain) -&gt; CertifiedBound
+  next_event(ray, state, t_limit) -&gt; Hit | NoHit | Unresolved
+  segmentize(ray, source_partition) -&gt; OrderedSegments | Unresolved
+
+Hit
+  t_interval, representative_t
+  interface_ids, region_before, region_after
+  event_kind: crossing | tangent | coincident | lattice | external
+  normal_or_branch_info, numerical_status
+
+OrderedSegments
+  [(t_begin, t_end, material_id, source_region_id, instance_id)]
+  endpoint_events, unresolved_intervals, provenance
+</code></pre>
+
+<p><code>CertifiedBound</code> means enclosure conditions have been checked; uncertified distance estimates use <code>Estimate</code>. <code>NoHit</code> means valid events were excluded throughout the interval, not that an iteration limit was reached. <code>Unresolved</code> triggers precision escalation or backend fallback and must not be silently discarded in production.</p>
+
+<h2 id="section-3">3. OpenMC implementation routes</h2>
+
+<h3>3.1 Route A: geometry prefiltering as the first feasibility target</h3>
+
+<p>DAGMC-SDF established distance-field prefiltering with fallback to original geometry queries. New work should target tighter bounds, deformation updates, instance caches, and error budgets. <a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">S24</a></p>
+
+<ol>
+<li>Provide conservative distances to <strong>all currently relevant region boundaries</strong> on reference geometry.</li>
+<li>At a particle-advancement point where the next candidate physical-event distance is known, determine whether exact boundary queries can be skipped.</li>
+<li>Include parent clipping, lattices, and other relevant boundaries; preserve independent tally-mesh track binning.</li>
+<li>Use the original exact path when bounds are insufficient; record acceptance, errors, fallback, and extra-query costs.</li>
+<li>Compare performance at fixed physics, seeds, and tallies; check physical statistics.</li>
+</ol>
+
+<p>Returning a safe short step from <code>Surface::distance()</code> as a boundary distance injects nonexistent boundaries into event selection. Integrate prefiltering where event semantics are explicit.</p>
+
+<p>For homogeneous macroscopic total cross section <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Σ</mi><mi>t</mi></msub><annotation encoding="application/x-tex">\Sigma_t</annotation></semantics></math>, <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>s</mi><mi>c</mi></msub><mo>=</mo><mo>−</mo><mo>ln</mo><mi>ξ</mi><mi>/</mi><msub><mi>Σ</mi><mi>t</mi></msub></mrow><annotation encoding="application/x-tex">s_c=-\ln\xi/\Sigma_t</annotation></semantics></math>. With fixed geometry bound <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>b</mi><annotation encoding="application/x-tex">b</annotation></semantics></math> and event conditions:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>P</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>s</mi><mi>c</mi></msub><mo>&lt;</mo><mi>b</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mn>1</mn><mo>−</mo><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>b</mi></mrow></msup><mi>.</mi></mrow><annotation encoding="application/x-tex">P(s_c&lt;b)=1-e^{-\Sigma_t b}.</annotation></semantics></math></p>
+
+<p><strong>Interpretation of this derivation:</strong> prefiltering benefits may grow with <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Σ</mi><mi>t</mi></msub><mi>b</mi></mrow><annotation encoding="application/x-tex">\Sigma_t b</annotation></semantics></math>, but depend on spatial/energy distributions, bound costs, and hierarchical boundaries. This local probability is not a global speedup.</p>
+
+<h3>3.2 Route B: native implicit surface/region extension</h3>
+
+<p>OpenMC exposes <code>evaluate</code>, directional <code>distance</code>, and <code>normal</code>, with multilevel coordinates and lattice tracking. <a href="https://github.com/openmc-dev/openmc/blob/develop/include/openmc/surface.h">S26</a><a href="https://github.com/openmc-dev/openmc/blob/develop/src/geometry.cpp">S27</a> Candidate work packages:</p>
+
+<ul>
+<li>Add bounded complex-surface types and expression serialization; avoid Python callbacks in particle hot loops.</li>
+<li>Separate compound-solid and individual-surface responsibilities; check that compound zero-surface events are valid in the current cell.</li>
+<li>Return the nearest valid forward hit from <code>distance</code>, using coincident-surface hints to avoid re-hitting the origin.</li>
+<li>Preserve stable surface/cell/instance IDs for crossing, tallies, distributed materials, and diagnostics.</li>
+<li>Validate translations/rotations, parent clipping, lattice exits, vacuum/transmission, then reflection/periodicity.</li>
+<li>Check compatibility with input, restart, geometry visualization, and stochastic volume calculations.</li>
+</ul>
+
+<p>Initially leave collision kernels and nuclear-data processing unchanged. If geometry is unchanged and only queries differ, test for statistically resolvable response bias under the same statistical design.</p>
+
+<h2 id="section-4">4. OpenMOC implementation route</h2>
+
+<p>Official documentation includes 3D tracks. <code>Geometry::segmentize3D</code> is a candidate direct-segmentation entry, whereas <code>segmentizeExtruded</code> and related paths assume extrusion. <a href="https://mit-crpg.github.io/OpenMOC/usersguide/input.html">S30</a><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/Geometry.cpp">S31</a><a href="https://github.com/mit-crpg/OpenMOC/blob/develop/src/TrackGenerator3D.cpp">S32</a></p>
+
+<h3>4.1 Replace geometry segmentation before transport sweeps</h3>
+
+<ol>
+<li>Fix existing track origins, directions, weights, and external boundary connections.</li>
+<li>Generate all material/FSR segments on the same tracks and convert to solver structures.</li>
+<li>Establish sequences and sweep results using explicit storage before on-demand generation/caching.</li>
+<li>Compare independent geometric FSR volumes with track integration; detect undersampled tiny regions.</li>
+<li>Enable CMFD and other acceleration only after volumes, FSR IDs, and connections agree, isolating geometry from coupling errors.</li>
+<li>Validate 3D twisting/bending with fixed planar boundaries before complex reflection.</li>
+</ol>
+
+<p>Source-region boundaries define integration discretization and cannot be merged merely because materials match. Merge adjacent segments only when material, source region, tally, and acceleration-equation states all agree.</p>
+
+<h3>4.2 Batching and on-demand segmentation</h3>
+
+<p>Compare explicit one-time storage, rebuilding every sweep, and mixed segment/program caches keyed by local geometry version. Write total cost as</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msub><mi>T</mi><mrow><mi>b</mi><mi>u</mi><mi>i</mi><mi>l</mi><mi>d</mi></mrow></msub><mo>+</mo><msub><mi>T</mi><mrow><mi>c</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>i</mi><mi>l</mi><mi>e</mi></mrow></msub><mo>+</mo><msub><mi>T</mi><mrow><mi>t</mi><mi>r</mi><mi>a</mi><mi>c</mi><mi>k</mi></mrow></msub><mo>+</mo><msub><mi>N</mi><mrow><mi>s</mi><mi>w</mi><mi>e</mi><mi>e</mi><mi>p</mi></mrow></msub><msub><mi>T</mi><mrow><mi>s</mi><mi>w</mi><mi>e</mi><mi>e</mi><mi>p</mi></mrow></msub><mo>+</mo><msub><mi>N</mi><mrow><mi>u</mi><mi>p</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>e</mi></mrow></msub><msub><mi>T</mi><mrow><mi>u</mi><mi>p</mi><mi>d</mi><mi>a</mi><mi>t</mi><mi>e</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">T=T_{build}+T_{compile}+T_{track}
++N_{sweep}T_{sweep}+N_{update}T_{update}.</annotation></semantics></math></p>
+
+<p>For static geometry and many sweeps, expensive initial segmentation can amortize; shape updates every iteration change this balance. Track-generation speedup and whole-solver speedup are different metrics.</p>
+
+<h2 id="section-5">5. Validation ladder and cases</h2>
+
+<h3>5.1 Level 0: mathematical and query contracts</h3>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Case</th>
+<th>Failure targeted</th>
+<th>Reference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G0</td>
+<td>Planes, spheres, coaxial cylinders/shells</td>
+<td>Nearest roots, entry/exit, unit scaling</td>
+<td>Analytic solutions</td>
+</tr>
+<tr>
+<td>G1</td>
+<td>Gradient-normalized <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><msup><mi>x</mi><mn>2</mn></msup><mo>−</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">f=x^2-1</annotation></semantics></math>
+</td>
+<td>Mistaking approximate distance for a safe step</td>
+<td>Hand calculation</td>
+</tr>
+<tr>
+<td>G2</td>
+<td>Multi-material thin slabs/shells</td>
+<td>Two crossings between same-sign endpoints</td>
+<td>Analytic roots/material sequences</td>
+</tr>
+<tr>
+<td>G3</td>
+<td>Sphere tangents and nearby rays</td>
+<td>Multiple roots, tiny chords, root merging</td>
+<td>Analytic/high-precision results</td>
+</tr>
+<tr>
+<td>G4</td>
+<td>Coplanar neighbors, touching solids, triple junctions</td>
+<td>Zero ownership, seams, inconsistent complements</td>
+<td>Shared interfaces/directional classification</td>
+</tr>
+<tr>
+<td>G5</td>
+<td>Finite periodic arrays and modulo fields</td>
+<td>Seam jumps and finite boundaries</td>
+<td>Explicit instance enumeration</td>
+</tr>
+<tr>
+<td>G6</td>
+<td>C/S bending and twisted noncircular sections</td>
+<td>Distance distortion and curved inverse rays</td>
+<td>High-precision intervals/converged models</td>
+</tr>
+<tr>
+<td>G7</td>
+<td>Nonuniform scaling and deep transformations</td>
+<td>Incorrect Lipschitz bounds, interval inflation</td>
+<td>Computable transformation bounds</td>
+</tr>
+<tr>
+<td>G8</td>
+<td>Nested universe/lattice clipping</td>
+<td>Ignored parent/lattice boundaries</td>
+<td>Reference hierarchical tracking</td>
+</tr>
+<tr>
+<td>G9</td>
+<td>Parameter perturbations across contact</td>
+<td>Stale caches and topology changes</td>
+<td>Complete rebuild</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Use random and structured adversarial rays in every class. Deliberately sample near-boundary origins, parallel/grazing directions, ultrathin layers, and multiscale coordinates.</p>
+
+<p>Normalize total geometry scale to 1 and test layer ratios such as <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mn>10</mn><mrow><mo>−</mo><mn>2</mn></mrow></msup><mo>,</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>4</mn></mrow></msup><mo>,</mo><msup><mn>10</mn><mrow><mo>−</mo><mn>6</mn></mrow></msup></mrow><annotation encoding="application/x-tex">10^{-2},10^{-4},10^{-6}</annotation></semantics></math>. These are numerical stress tests, not reactor dimensions. Then verify tolerance scaling in physical units.</p>
+
+<h3>5.2 Level 1: fixed source with identical physics</h3>
+
+<p>Use nonfission or fixed-fission-source monoenergetic/few-group cases; check leakage, absorption, and regional rates with identical materials, cross sections, and boundaries. This avoids confounding source iteration and continuous-energy/multigroup collapse.</p>
+
+<p>An analytic pure-absorber slab tests <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mi>e</mi><mrow><mo>−</mo><msub><mi>Σ</mi><mi>t</mi></msub><mi>ℓ</mi></mrow></msup><annotation encoding="application/x-tex">e^{-\Sigma_t\ell}</annotation></semantics></math> and interface-shift optical-thickness errors. Add scattering to test iterative amplification.</p>
+
+<h3>5.3 Level 2: regular-geometry regression</h3>
+
+<p>Select public pin/assembly benchmarks such as C5G7 after verifying versions and inputs. First converge implicit and analytic backends under identical discretization, then add bending/twisting.</p>
+
+<p><strong>Caution:</strong> deformed public benchmarks become custom derived problems; original reference values no longer apply. Archive original inputs, deformation rules, and new reference-solution procedures together.</p>
+
+<h3>5.4 Level 3: continuous deformation and multi-material structures</h3>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Geometry family</th>
+<th>Reference comparisons</th>
+<th>Main responses</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Continuously twisted noncircular fuel</td>
+<td>Axial-slicing and independent CAD/mesh sequences</td>
+<td>Axial/radial power, local rates, cost</td>
+</tr>
+<tr>
+<td>C/S-bent rods/assemblies</td>
+<td>Analytic special cases, rotated segments, stacked models</td>
+<td>Gap flux, power tilt, leakage</td>
+</tr>
+<tr>
+<td>Eccentric thin cladding/narrow water gaps</td>
+<td>Exact-thickness models and mesh convergence</td>
+<td>Cladding absorption and material chord distributions</td>
+</tr>
+<tr>
+<td>Repeated assemblies/simplified core</td>
+<td>Undeformed regular limit</td>
+<td>Hierarchical caches, scaling, total time</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Agreement between OpenMC and OpenMOC is insufficient if they share the same incorrect kernel. Keep an independent geometry path; validate mesh watertightness, volume, shared faces, and thin-layer convergence. <a href="https://www.mattkeeter.com/blog/2023-04-23-adversarial/">S18</a><a href="https://www.mattkeeter.com/blog/2026-07-03-meshing/">S19</a></p>
+
+<h3>5.5 Level 4: multiphysics and derivatives</h3>
+
+<p>First fix temperature/density to isolate geometry, then introduce density, temperature, and material mapping under explicit conservation assumptions. Validate simple derivatives before nonsmooth contact transitions. These extensions should not gate the forward-geometry paper.</p>
+
+<h2 id="section-6">6. Required metrics</h2>
+
+<h3>6.1 Geometry correctness</h3>
+
+<ul>
+<li>Nearest-valid-event error, material-sequence agreement, missed/duplicate interfaces.</li>
+<li>Maximum segment-length error, material-integrated path error, total-track closure error.</li>
+<li>Tangency classification, <code>unresolved</code> fractions at coplanar/multiple roots, and fallback outcomes.</li>
+<li>Consistency across backends, thread counts, coordinate scales, and expression reorderings.</li>
+<li>Independent FSR volume errors, missed regions, reconstructed volume, and coverage distributions.</li>
+</ul>
+
+<p>For target segment length <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>L</mi><annotation encoding="application/x-tex">L</annotation></semantics></math>, record</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi>c</mi><mi>l</mi><mi>o</mi><mi>s</mi><mi>e</mi></mrow></msub><mo>=</mo><mfrac><mrow><mo stretchy="false" form="prefix">|</mo><munder><mo>∑</mo><mi>j</mi></munder><msub><mi>ℓ</mi><mi>j</mi></msub><mo>−</mo><mi>L</mi><mo stretchy="false" form="prefix">|</mo></mrow><mrow><mo>max</mo><mo stretchy="false" form="prefix">(</mo><mi>L</mi><mo>,</mo><msub><mi>L</mi><mrow><mi>s</mi><mi>c</mi><mi>a</mi><mi>l</mi><mi>e</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow></mfrac><mo>,</mo></mrow><annotation encoding="application/x-tex">e_{close}=\frac{|\sum_j\ell_j-L|}{\max(L,L_{scale})},</annotation></semantics></math></p>
+
+<p>where <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi>s</mi><mi>c</mi><mi>a</mi><mi>l</mi><mi>e</mi></mrow></msub><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">L_{scale}&gt;0</annotation></semantics></math> is a predefined small-length scale. Also report absolute errors so normalization does not hide small-scale failures.</p>
+
+<h3>6.2 Transport correctness</h3>
+
+<p>Record <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mrow><mi>e</mi><mi>f</mi><mi>f</mi></mrow></msub><annotation encoding="application/x-tex">k_{eff}</annotation></semantics></math>, regional flux, normalized power RMS/maximum deviations, absorption/fission rates, leakage, and discrete-balance residuals. Include absolute or volume-weighted errors where low responses distort relative errors.</p>
+
+<p>Use an explicit eigenvalue-difference definition:</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>Δ</mi><mi>k</mi><mspace width="0.167em"/><mo stretchy="false" form="prefix">[</mo><mstyle mathvariant="normal"><mi>p</mi><mi>c</mi><mi>m</mi></mstyle><mo stretchy="false" form="postfix">]</mo><mo>=</mo><msup><mn>10</mn><mn>5</mn></msup><mo stretchy="false" form="prefix">(</mo><msub><mi>k</mi><mrow><mi>t</mi><mi>e</mi><mi>s</mi><mi>t</mi></mrow></msub><mo>−</mo><msub><mi>k</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo><mo>,</mo></mrow><annotation encoding="application/x-tex">\Delta k\,[\mathrm{pcm}]=10^5(k_{test}-k_{ref}),</annotation></semantics></math></p>
+
+<p>Distinguish this from reactivity difference <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msup><mn>10</mn><mn>5</mn></msup><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mi>/</mi><msub><mi>k</mi><mrow><mi>r</mi><mi>e</mi><mi>f</mi></mrow></msub><mo>−</mo><mn>1</mn><mi>/</mi><msub><mi>k</mi><mrow><mi>t</mi><mi>e</mi><mi>s</mi><mi>t</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">10^5(1/k_{ref}-1/k_{test})</annotation></semantics></math>, despite their shared units.</p>
+
+<p>For independent MC estimates, the difference standard deviation is <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msqrt><mrow><msubsup><mi>σ</mi><mn>1</mn><mn>2</mn></msubsup><mo>+</mo><msubsup><mi>σ</mi><mn>2</mn><mn>2</mn></msubsup></mrow></msqrt><annotation encoding="application/x-tex">\sqrt{\sigma_1^2+\sigma_2^2}</annotation></semantics></math>; correlated sampling requires covariance. Agreement within a broad confidence interval alone does not establish an engineering error target.</p>
+
+<h3>6.3 Performance and scaling</h3>
+
+<p>Separate input construction, field/mesh preprocessing, compilation, acceleration structures, tracking, sweeps, total wall time, and peak memory. MC should report <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mo stretchy="false" form="prefix">(</mo><msup><mi>σ</mi><mn>2</mn></msup><mi>T</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">1/(\sigma^2T)</annotation></semantics></math> for a fixed observable; this FOM alone is insufficient when bias is introduced.</p>
+
+<p>For geometry speedup <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>s</mi><annotation encoding="application/x-tex">s</annotation></semantics></math> and original geometry-time fraction <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>, use</p>
+
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mrow><mi>t</mi><mi>o</mi><mi>t</mi><mi>a</mi><mi>l</mi></mrow></msub><mo>≤</mo><mfrac><mn>1</mn><mrow><mo stretchy="false" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>p</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mi>p</mi><mi>/</mi><mi>s</mi></mrow></mfrac></mrow><annotation encoding="application/x-tex">S_{total}\le\frac{1}{(1-p)+p/s}</annotation></semantics></math></p>
+
+<p>for basic interpretation. Report expression counts, local program lengths, material/FSR counts, rays, total segments, average/tail evaluation counts, fallback rates, and cache hits.</p>
+
+<h2 id="section-7">7. Proposed acceptance targets and error budget</h2>
+
+<p>These are adjustable initial research targets, <strong>not literature guarantees or achieved results</strong>.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Proposed target</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Structured geometry counterexamples</td>
+<td>No known missed layers, wrong labels, or silent unresolved cases</td>
+<td>Finite testing is not a global proof</td>
+</tr>
+<tr>
+<td>Large random-ray regression</td>
+<td>Predefine at least <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msup><mn>10</mn><mn>6</mn></msup><annotation encoding="application/x-tex">10^6</annotation></semantics></math> rays; report zero failures or every failure</td>
+<td>Does not replace tangent/thin-layer tests</td>
+</tr>
+<tr>
+<td>Nearest-intersection error</td>
+<td>Per-case absolute plus relative tolerance</td>
+<td>Below minimum feature scale, accounting for grazing conditioning</td>
+</tr>
+<tr>
+<td>Geometry-induced assembly eigenvalue shift</td>
+<td>Initial <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false" form="prefix">|</mo><mi>Δ</mi><mi>k</mi><mo stretchy="false" form="postfix">|</mo><mo>≤</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">\lvert\Delta k\rvert\le10</annotation></semantics></math> pcm</td>
+<td>Isolate other errors; reference uncertainty substantially smaller</td>
+</tr>
+<tr>
+<td>Geometry-induced local power error</td>
+<td>Initial RMS <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>≤</mo><mn>0.1</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\le0.1\%</annotation></semantics></math>, maximum <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>≤</mo><mn>0.5</mn><mi>%</mi></mrow><annotation encoding="application/x-tex">\le0.5\%</annotation></semantics></math>
+</td>
+<td>Define normalization, low-power masking, and uncertainty</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Cost curves at equal accuracy; allow no speedup in some cases</td>
+<td>No baseline-independent universal speedup promise</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Scan field approximation → root tolerance → FSR scale → track spacing → angular count → iteration threshold independently. Change one factor at a time or use a declared factorial design while converging others. Then examine interactions; biases generally cannot be assumed independent and combined in quadrature.</p>
+
+<h2 id="section-8">8. Ablations and falsifiable conclusions</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Hypothesis</th>
+<th>Required comparison</th>
+<th>Useful conclusion if false</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Local compilation beats full expressions</td>
+<td>No pruning/interval/Lipschitz pruning, including build time</td>
+<td>Beneficial complexity/reuse ranges</td>
+</tr>
+<tr>
+<td>Conservative bounds reduce OpenMC queries</td>
+<td>Prefilter on/off across <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>Σ</mi><mi>t</mi></msub><mi>b</mi></mrow><annotation encoding="application/x-tex">\Sigma_t b</annotation></semantics></math> distributions</td>
+<td>Limits at low collision rates/high bound costs</td>
+</tr>
+<tr>
+<td>Direct implicit geometry beats slicing</td>
+<td>Total costs and slice counts at equal response error</td>
+<td>When equivalent geometry is sufficient</td>
+</tr>
+<tr>
+<td>Gap/response-aware FSRs beat uniform regions</td>
+<td>Equal FSR count, memory, and angles</td>
+<td>Whether geometry or source resolution dominates</td>
+</tr>
+<tr>
+<td>New segmentation supports non-extruded 3D MOC</td>
+<td>Regular limits, continuous twisting/bending</td>
+<td>OTF assumptions requiring redesign</td>
+</tr>
+<tr>
+<td>Geometry derivatives are useful</td>
+<td>Analytic, AD/adjoint, finite-difference, statistical errors</td>
+<td>Differentiability domains near transverse/topology-changing events</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="section-9">9. Proposed 24-month schedule and milestones</h2>
+
+<p>Months start at project launch; this is neither a funding award nor completed progress.</p>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Months</th>
+<th>Work and deliverables</th>
+<th>Progress criterion</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>1–3</td>
+<td>Pin versions; mathematical types/interfaces; analytic/adversarial ray library</td>
+<td>Reproducible references and explicit material/FSR semantics</td>
+</tr>
+<tr>
+<td>B</td>
+<td>4–7</td>
+<td>Bounded surfaces, conservative stepping, root isolation, degenerate fallback, OpenMC prefilter</td>
+<td>Thin-layer, grazing, hierarchy, and label tests pass</td>
+</tr>
+<tr>
+<td>C</td>
+<td>8–12</td>
+<td>Explicit-3D OpenMOC segmentation; regular/deformed fixed-source tests; local errors</td>
+<td>Independently validated sequences and volumes</td>
+</tr>
+<tr>
+<td>D</td>
+<td>13–17</td>
+<td>Local pruning/JIT, caching/batching, equal-accuracy cost curves</td>
+<td>Explainable benefits or explicit failure domain including builds</td>
+</tr>
+<tr>
+<td>E</td>
+<td>18–21</td>
+<td>Assembly/simplified core, response adaptation, MC/MOC comparison</td>
+<td>Separable errors and converged baselines/new method</td>
+</tr>
+<tr>
+<td>F</td>
+<td>22–24</td>
+<td>Optional Random Ray/few-parameter sensitivities; papers/reproducibility</td>
+<td>Extensions do not replace forward-reliability acceptance</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Suggested paper centers:</p>
+
+<ol>
+<li>
+<strong>Reliable complete traversal and degeneracy handling for multi-material implicit programs:</strong> algorithmic conditions, failure semantics, geometry validation.</li>
+<li>
+<strong>3D MOC segmentation errors and source-region adaptation under continuous deformation:</strong> geometry/transport error mechanisms and equal-accuracy costs.</li>
+<li>
+<strong>Spatial local expression compilation for MC/MOC workloads:</strong> material-preserving pruning, cost models, and end-to-end evidence.</li>
+</ol>
+
+<p>These are organizational suggestions. Search interval ray tracing, material-aware implicit representations, direct CAD-MOC, parameterized transport, and shape derivatives before formal novelty claims.</p>
+
+<h2 id="section-10">10. Risks and alternatives retaining research value</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Risk</th>
+<th>Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Omega unavailable or changing</td>
+<td>Independent minimal expression graph; treat Omega as conceptual inspiration</td>
+</tr>
+<tr>
+<td>Loose Lipschitz bounds</td>
+<td>Local subdivision, directional bounds, interval roots, analytic hybrids; retain safety</td>
+</tr>
+<tr>
+<td>Expensive degenerate root isolation</td>
+<td>Detect tangency/coplanarity, restrict families, report fallback/unresolved costs</td>
+</tr>
+<tr>
+<td>Fidget lacks required rigorous enclosures</td>
+<td>Reuse structural ideas with an independent double/interval reference and differential validation</td>
+</tr>
+<tr>
+<td>Extruded OTF incompatible with deformation</td>
+<td>Begin explicit-3D; design new local on-demand methods</td>
+</tr>
+<tr>
+<td>Multigroup errors confound OpenMC comparison</td>
+<td>Same-multigroup fixed source first, then separate continuous-energy collapse convergence</td>
+</tr>
+<tr>
+<td>Distorted mesh reference</td>
+<td>Compare analytic special cases, high-precision roots, independent meshes; check geometric/physical convergence</td>
+</tr>
+<tr>
+<td>No large-model end-to-end advantage</td>
+<td>Publish applicability and negative results; retain reliability/error-analysis contributions</td>
+</tr>
+</tbody>
+</table>
+</div>
+<h2 id="section-11">11. Reproducibility checklist</h2>
+
+<p>Archive commits, build options, dependencies/compilers, CPU/GPU/thread configuration; nuclear databases and processing; geometry/material/FSR parameters; reference construction; seeds/repetitions; all tolerances; raw intersections and segments; statistical uncertainties; timing boundaries; every failure/fallback record.</p>
+
+<p>The original report delivered research documents and a source index, with no such experiments or solver modifications.</p>
+
+    </main>
+  </body>
+</html>

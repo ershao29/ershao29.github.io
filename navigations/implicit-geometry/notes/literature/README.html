@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Literature Catalog | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../../styles/implicit-geometry-study.css">
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumb"><a href="../../../../index.html">Home</a> / <a href="../../../projects.html">Projects</a> / <a href="../../implicit-geometry.html">Implicit Geometry</a></nav>
+      <header>
+        <h1>Literature Catalog</h1>
+        
+      </header>
+<details class="contents"><summary>本页目录</summary>
+<ul>
+  <li><a href="#section-1">Core papers</a></li>
+  <li><a href="#section-2">Supporting papers</a></li>
+  <li><a href="#section-3">Reading questions for the proposal</a></li>
+</ul>
+</details>
+<p>Start with the <a href="../README.html">doctoral reading guide</a>. PDFs are original English sources, preserved without rewriting. Notes are English companions distilled from the original Chinese documents; they separate published claims, explanatory derivations, teaching implementations, and proposed research.</p>
+
+<h2 id="section-1">Core papers</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Local PDF</th>
+<th>English notes</th>
+<th>Main role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Luo, Wang, Lukens, Variational Analysis on the Signed Distance Functions</td>
+<td><a href="https://doi.org/10.1007/s10957-018-1414-2">24 pages</a></td>
+<td><a href="notes/variational-analysis-signed-distance.html">Theory summary</a></td>
+<td>Exact distance, convexity, projections, subdifferentials</td>
+</tr>
+<tr>
+<td>Dapogny, Frey, Computation of the Signed Distance Function to a Discrete Contour on Adapted Triangulation</td>
+<td><a href="https://www.ljll.fr/hecht/ftp/Mireille-Haddad/distance.pdf">25 pages</a></td>
+<td><a href="notes/adaptive-signed-distance-computation.html">Method summary</a></td>
+<td>Seed construction, propagation, mesh adaptation, geometry errors</td>
+</tr>
+<tr>
+<td>Shriwise et al., Particle Tracking Acceleration via Signed Distance Fields in DAGMC</td>
+<td><a href="https://www.kns.org/files/int_paper/paper/MC2017_2017_2/P157S02-08ShriwiseP.pdf">11 pages including cover</a></td>
+<td><a href="notes/dagmc-sdf-particle-tracking.html">Tracking summary</a></td>
+<td>Nuclear-transport prefiltering prior art</td>
+</tr>
+<tr>
+<td>Hansson-Soderlund, Evans, Akenine-Moller, Ray Tracing of Signed Distance Function Grids</td>
+<td><a href="https://jcgt.org/published/0011/03/06/">20 pages</a></td>
+<td><a href="notes/ray-tracing-sdf-grids.html">Grid-intersection summary</a></td>
+<td>Trilinear roots, traversal, normal construction</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The DAGMC file contains a conference paper beneath a cover identifying the related journal DOI. Its page numbers and inputs must be distinguished from the journal version. The two papers previously referenced outside the workspace have now been copied from <code>paper-sdf</code> into this directory.</p>
+
+<h2 id="section-2">Supporting papers</h2>
+
+<div class="table-scroll" tabindex="0" role="region" aria-label="Data table">
+<table>
+<thead>
+<tr>
+<th>Paper</th>
+<th>Local PDF</th>
+<th>Scope and relevance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Keinert et al., Improved Ray Casting of Procedural Distance Bounds</td>
+<td><a href="https://doi.org/10.1080/2165347X.2015.1033069">13 pages</a></td>
+<td>Bounds, overrelaxation, self-intersection, and rendering stopping criteria</td>
+</tr>
+<tr>
+<td>Danielsson, Euclidean Distance Mapping</td>
+<td><a href="https://doi.org/10.1016/0146-664X(80)90054-4">22 pages</a></td>
+<td>Sequential pixel-distance propagation and skeleton background</td>
+</tr>
+<tr>
+<td>Sawhney et al., Walk on Stars: A Grid-Free Monte Carlo Method for PDEs with Neumann Boundary Conditions</td>
+<td><a href="https://www.cs.cmu.edu/~kmcrane/Projects/WalkOnStars/">20 pages</a></td>
+<td>Mixed-boundary elliptic PDE geometry queries; distinct physics from neutron transport</td>
+</tr>
+<tr>
+<td>Zhou et al., CSN: A generalizable and high-fidelity framework for solving PDEs in complex real-world domains</td>
+<td><a href="https://ssrn.com/abstract=7300024">34-page preprint</a></td>
+<td>Curved geometry versus solution approximation; directly relevant alternative for novelty review</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Read the <a href="notes/supporting-papers.html">supporting-paper annotations</a> for the limits of this overview. The CSN source is the original <code>ssrn-7300024.pdf</code>, renamed after checking its title; its PDF explicitly identifies a non-peer-reviewed preprint.</p>
+
+<h2 id="section-3">Reading questions for the proposal</h2>
+
+<ul>
+<li>What geometry is authoritative: analytic shape, CAD boundary, triangle mesh, or interpolated field?</li>
+<li>Which quantities are exact, estimated, or bounded, and over what domain?</li>
+<li>Can thin layers and every material/source boundary be recovered?</li>
+<li>Does a claim concern rendering quality, geometry queries, or complete transport responses?</li>
+<li>Are preprocessing, memory, fallback, and physical errors included in comparisons?</li>
+</ul>
+
+<p>The <a href="../research-proposal/evidence-and-sources.html">proposal evidence index</a> retains the original review's 41 source records. Later local availability of a PDF does not retroactively change that review's stated reading scope.</p>
+
+    </main>
+  </body>
+</html>

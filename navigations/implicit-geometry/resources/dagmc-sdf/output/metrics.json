@@ -1,0 +1,594 @@
+{
+  "seed": 20170417,
+  "samples": 5000,
+  "histories": 200,
+  "python": "3.9.6",
+  "platform": "macOS-15.4.1-arm64-arm-64bit",
+  "seconds": 25.031408292000002,
+  "benchmarks": [
+    {
+      "name": "analytic_sphere",
+      "build_seconds": 0.003429290999999779,
+      "setup_counts": {
+        "ray_calls": 0,
+        "nearest_calls": 2197,
+        "box_tests": 0,
+        "triangle_tests": 0,
+        "sign_fallbacks": 0
+      },
+      "node_count": 2197,
+      "value_bytes": 17576,
+      "triangles": 0,
+      "results": [
+        {
+          "geometry": "analytic_sphere",
+          "mode": "baseline",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.017168083999999695,
+          "decision_mismatches": 0,
+          "skipped": 0,
+          "utilization": 0.0,
+          "field_lookups": 0,
+          "ray_calls": 5000,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_sphere",
+          "mode": "single",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.06064729199999963,
+          "decision_mismatches": 0,
+          "skipped": 1003,
+          "utilization": 0.2006,
+          "field_lookups": 5000,
+          "ray_calls": 3997,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_sphere",
+          "mode": "pair",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.09747495900000036,
+          "decision_mismatches": 0,
+          "skipped": 1262,
+          "utilization": 0.2524,
+          "field_lookups": 10000,
+          "ray_calls": 3738,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_sphere",
+          "mode": "pair",
+          "error_mode": "rms",
+          "events": 5000,
+          "seconds": 0.09944179100000028,
+          "decision_mismatches": 0,
+          "skipped": 2633,
+          "utilization": 0.5266,
+          "field_lookups": 10000,
+          "ray_calls": 2367,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        }
+      ]
+    },
+    {
+      "name": "analytic_shell",
+      "build_seconds": 0.0037460420000003936,
+      "setup_counts": {
+        "ray_calls": 0,
+        "nearest_calls": 2197,
+        "box_tests": 0,
+        "triangle_tests": 0,
+        "sign_fallbacks": 0
+      },
+      "node_count": 2197,
+      "value_bytes": 17576,
+      "triangles": 0,
+      "results": [
+        {
+          "geometry": "analytic_shell",
+          "mode": "baseline",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.0252082920000003,
+          "decision_mismatches": 0,
+          "skipped": 0,
+          "utilization": 0.0,
+          "field_lookups": 0,
+          "ray_calls": 5000,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_shell",
+          "mode": "single",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.06996804200000017,
+          "decision_mismatches": 0,
+          "skipped": 15,
+          "utilization": 0.003,
+          "field_lookups": 5000,
+          "ray_calls": 4985,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_shell",
+          "mode": "pair",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.10714966699999984,
+          "decision_mismatches": 0,
+          "skipped": 24,
+          "utilization": 0.0048,
+          "field_lookups": 10000,
+          "ray_calls": 4976,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "analytic_shell",
+          "mode": "pair",
+          "error_mode": "rms",
+          "events": 5000,
+          "seconds": 0.10521529100000038,
+          "decision_mismatches": 0,
+          "skipped": 2046,
+          "utilization": 0.4092,
+          "field_lookups": 10000,
+          "ray_calls": 2954,
+          "nearest_calls": 0,
+          "box_tests": 0,
+          "triangle_tests": 0,
+          "sign_fallbacks": 0
+        }
+      ]
+    },
+    {
+      "name": "triangle_sphere_128",
+      "build_seconds": 0.7414153330000008,
+      "setup_counts": {
+        "ray_calls": 0,
+        "nearest_calls": 2197,
+        "box_tests": 38118,
+        "triangle_tests": 32448,
+        "sign_fallbacks": 0
+      },
+      "node_count": 2197,
+      "value_bytes": 17576,
+      "triangles": 128,
+      "results": [
+        {
+          "geometry": "triangle_sphere_128",
+          "mode": "baseline",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.20402450000000094,
+          "decision_mismatches": 0,
+          "skipped": 0,
+          "utilization": 0.0,
+          "field_lookups": 0,
+          "ray_calls": 5000,
+          "nearest_calls": 0,
+          "box_tests": 59370,
+          "triangle_tests": 21492,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_128",
+          "mode": "single",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.22573466599999925,
+          "decision_mismatches": 0,
+          "skipped": 929,
+          "utilization": 0.1858,
+          "field_lookups": 5000,
+          "ray_calls": 4071,
+          "nearest_calls": 0,
+          "box_tests": 48632,
+          "triangle_tests": 20212,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_128",
+          "mode": "pair",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.2544534590000005,
+          "decision_mismatches": 0,
+          "skipped": 1171,
+          "utilization": 0.2342,
+          "field_lookups": 10000,
+          "ray_calls": 3829,
+          "nearest_calls": 0,
+          "box_tests": 45536,
+          "triangle_tests": 19524,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_128",
+          "mode": "pair",
+          "error_mode": "rms",
+          "events": 5000,
+          "seconds": 0.20724579200000015,
+          "decision_mismatches": 0,
+          "skipped": 2553,
+          "utilization": 0.5106,
+          "field_lookups": 10000,
+          "ray_calls": 2447,
+          "nearest_calls": 0,
+          "box_tests": 29156,
+          "triangle_tests": 13812,
+          "sign_fallbacks": 0
+        }
+      ]
+    },
+    {
+      "name": "triangle_sphere_512",
+      "build_seconds": 1.2999209580000013,
+      "setup_counts": {
+        "ray_calls": 0,
+        "nearest_calls": 2197,
+        "box_tests": 76582,
+        "triangle_tests": 55680,
+        "sign_fallbacks": 0
+      },
+      "node_count": 2197,
+      "value_bytes": 17576,
+      "triangles": 512,
+      "results": [
+        {
+          "geometry": "triangle_sphere_512",
+          "mode": "baseline",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.21860104199999952,
+          "decision_mismatches": 0,
+          "skipped": 0,
+          "utilization": 0.0,
+          "field_lookups": 0,
+          "ray_calls": 5000,
+          "nearest_calls": 0,
+          "box_tests": 80602,
+          "triangle_tests": 16848,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_512",
+          "mode": "single",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.24200979200000106,
+          "decision_mismatches": 0,
+          "skipped": 999,
+          "utilization": 0.1998,
+          "field_lookups": 5000,
+          "ray_calls": 4001,
+          "nearest_calls": 0,
+          "box_tests": 68450,
+          "triangle_tests": 16844,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_512",
+          "mode": "pair",
+          "error_mode": "paper",
+          "events": 5000,
+          "seconds": 0.2718259169999975,
+          "decision_mismatches": 0,
+          "skipped": 1291,
+          "utilization": 0.2582,
+          "field_lookups": 10000,
+          "ray_calls": 3709,
+          "nearest_calls": 0,
+          "box_tests": 64166,
+          "triangle_tests": 16832,
+          "sign_fallbacks": 0
+        },
+        {
+          "geometry": "triangle_sphere_512",
+          "mode": "pair",
+          "error_mode": "rms",
+          "events": 5000,
+          "seconds": 0.23390487500000035,
+          "decision_mismatches": 0,
+          "skipped": 2673,
+          "utilization": 0.5346,
+          "field_lookups": 10000,
+          "ray_calls": 2327,
+          "nearest_calls": 0,
+          "box_tests": 42386,
+          "triangle_tests": 15080,
+          "sign_fallbacks": 0
+        }
+      ]
+    }
+  ],
+  "query_checks": [
+    {
+      "error_mode": "paper",
+      "points": 5000,
+      "interior_points": 1455,
+      "containment_mismatches": 0,
+      "unsafe_lower_bounds": 0,
+      "incorrect_exact_answers": 0,
+      "nonexact_lower_bound_answers": 498,
+      "counts": {
+        "events": 0,
+        "skipped_rays": 0,
+        "field_lookups": 6455,
+        "containment_fallbacks": 3972,
+        "distance_fallbacks": 2412
+      }
+    },
+    {
+      "error_mode": "rms",
+      "points": 5000,
+      "interior_points": 1455,
+      "containment_mismatches": 0,
+      "unsafe_lower_bounds": 0,
+      "incorrect_exact_answers": 0,
+      "nonexact_lower_bound_answers": 1041,
+      "counts": {
+        "events": 0,
+        "skipped_rays": 0,
+        "field_lookups": 6455,
+        "containment_fallbacks": 2924,
+        "distance_fallbacks": 1869
+      }
+    }
+  ],
+  "error_checks": [
+    {
+      "cells": 8,
+      "error_mode": "paper",
+      "samples": 5000,
+      "max_error": 1.1831346943824177,
+      "mean_error": 0.1810919970850625,
+      "mean_bound": 4.330127018922216,
+      "max_error_to_bound": 0.2732332537157043,
+      "bound_violations": 0,
+      "value_bytes": 5832
+    },
+    {
+      "cells": 8,
+      "error_mode": "rms",
+      "samples": 5000,
+      "max_error": 1.1831346943824177,
+      "mean_error": 0.1810919970850625,
+      "mean_bound": 1.7504805055821693,
+      "max_error_to_bound": 0.8213349704873119,
+      "bound_violations": 0,
+      "value_bytes": 5832
+    },
+    {
+      "cells": 16,
+      "error_mode": "paper",
+      "samples": 5000,
+      "max_error": 0.5371620185495614,
+      "mean_error": 0.04371660100156901,
+      "mean_bound": 2.165063509461115,
+      "max_error_to_bound": 0.24810450880641505,
+      "bound_violations": 0,
+      "value_bytes": 39304
+    },
+    {
+      "cells": 16,
+      "error_mode": "rms",
+      "samples": 5000,
+      "max_error": 0.5371620185495614,
+      "mean_error": 0.04371660100156901,
+      "mean_bound": 0.8741798510217743,
+      "max_error_to_bound": 0.6847450283250331,
+      "bound_violations": 0,
+      "value_bytes": 39304
+    },
+    {
+      "cells": 32,
+      "error_mode": "paper",
+      "samples": 5000,
+      "max_error": 0.2698195343146592,
+      "mean_error": 0.011814318925915578,
+      "mean_bound": 1.0825317547305708,
+      "max_error_to_bound": 0.2492486092306791,
+      "bound_violations": 0,
+      "value_bytes": 287496
+    },
+    {
+      "cells": 32,
+      "error_mode": "rms",
+      "samples": 5000,
+      "max_error": 0.2698195343146592,
+      "mean_error": 0.011814318925915578,
+      "mean_bound": 0.4374041630265425,
+      "max_error_to_bound": 0.7093380034514892,
+      "bound_violations": 0,
+      "value_bytes": 287496
+    }
+  ],
+  "walks": [
+    {
+      "collisions": 15785,
+      "escapes": 185,
+      "capped": 15,
+      "track_length": 7987.9768481011215,
+      "histories": 200,
+      "queries": {
+        "events": 15970,
+        "skipped_rays": 10831,
+        "field_lookups": 31940,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 0.5,
+      "mean_over_R": 0.05,
+      "error_mode": "paper",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 15785,
+      "escapes": 185,
+      "capped": 15,
+      "track_length": 7987.9768481011215,
+      "histories": 200,
+      "queries": {
+        "events": 15970,
+        "skipped_rays": 13988,
+        "field_lookups": 31940,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 0.5,
+      "mean_over_R": 0.05,
+      "error_mode": "rms",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 2574,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 4092.1761812390637,
+      "histories": 200,
+      "queries": {
+        "events": 2774,
+        "skipped_rays": 1487,
+        "field_lookups": 5548,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 1.5,
+      "mean_over_R": 0.15,
+      "error_mode": "paper",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 2574,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 4092.1761812390637,
+      "histories": 200,
+      "queries": {
+        "events": 2774,
+        "skipped_rays": 2061,
+        "field_lookups": 5548,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 1.5,
+      "mean_over_R": 0.15,
+      "error_mode": "rms",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 447,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 2327.149109089102,
+      "histories": 200,
+      "queries": {
+        "events": 647,
+        "skipped_rays": 191,
+        "field_lookups": 1294,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 5.0,
+      "mean_over_R": 0.5,
+      "error_mode": "paper",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 447,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 2327.149109089102,
+      "histories": 200,
+      "queries": {
+        "events": 647,
+        "skipped_rays": 267,
+        "field_lookups": 1294,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 5.0,
+      "mean_over_R": 0.5,
+      "error_mode": "rms",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 191,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 2028.546802022862,
+      "histories": 200,
+      "queries": {
+        "events": 391,
+        "skipped_rays": 65,
+        "field_lookups": 782,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 10.0,
+      "mean_over_R": 1.0,
+      "error_mode": "paper",
+      "identical_to_baseline": true
+    },
+    {
+      "collisions": 191,
+      "escapes": 200,
+      "capped": 0,
+      "track_length": 2028.546802022862,
+      "histories": 200,
+      "queries": {
+        "events": 391,
+        "skipped_rays": 110,
+        "field_lookups": 782,
+        "containment_fallbacks": 0,
+        "distance_fallbacks": 0
+      },
+      "mean_free_path": 10.0,
+      "mean_over_R": 1.0,
+      "error_mode": "rms",
+      "identical_to_baseline": true
+    }
+  ],
+  "nonconvex_example": {
+    "start": [
+      -2.0,
+      0.17,
+      0.11
+    ],
+    "end": [
+      2.0,
+      0.17,
+      0.11
+    ],
+    "both_endpoints_inside": true,
+    "skip_certificate": false,
+    "first_hit": 1.0,
+    "expected_first_hit": 1.0
+  }
+}
