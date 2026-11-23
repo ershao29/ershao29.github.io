@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="从训练检查点导出 PLY，或用 Python 生成可离线打开的交互式 HTML。">
+    <title>零等值面提取与三维可视化 | DeepSDF | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/deepsdf.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <main id="content">
+      <nav aria-label="当前位置"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../index.html">DeepSDF</a></nav>
+      <header>
+        <h1>零等值面提取与三维可视化</h1>
+        <p class="lead">从训练检查点导出 PLY，或用 Python 生成可离线打开的交互式 HTML。</p>
+        <p class="updated">更新于 <time datetime="2026-11-23">2026-11-23</time> · amd128 部署与实验记录</p>
+      </header>
+      <nav class="chapter-nav" aria-label="DeepSDF 教程">
+        <a href="../index.html">DeepSDF</a>
+        <a href="../setup/index.html">环境安装</a>
+        <a href="../training/index.html">球体训练</a>
+        <a href="../visualization/index.html" aria-current="page">三维可视化</a>
+        <a href="../troubleshooting/index.html">排错记录</a>
+      </nav>
+      <nav class="contents" aria-label="本页目录">
+        <a href="#choices">导出入口</a>
+        <a href="#html">生成 HTML</a>
+        <a href="#browser">本地查看</a>
+        <a href="#ply">导出 PLY</a>
+        <a href="#algorithm">提取过程</a>
+      </nav>
+<section aria-labelledby="choices">
+<h2 id="choices">两个网格导出入口</h2>
+
+<p>两个入口都使用训练好的解码器和对应潜向量，提取 <code>SDF = 0</code>。以已有第 1000 轮检查点为例，浏览器脚本输出自包含 HTML，原版脚本输出 PLY。</p>
+<div class="table-scroll"><table>
+<caption>脚本默认配置</caption>
+<thead><tr><th scope="col">入口</th><th scope="col">默认计算</th><th scope="col">结果</th></tr></thead>
+<tbody>
+<tr><th scope="row">visualize_sdf_3d.py</th><td>CPU，128³；支持 CUDA</td><td>浏览器可旋转、缩放的 HTML</td></tr>
+<tr><th scope="row">generate_training_meshes.py</th><td>GPU，256³</td><td>PLY 三角网格</td></tr>
+</tbody></table></div>
+
+</section><section aria-labelledby="html">
+<h2 id="html">用 Python 生成 HTML</h2>
+
+<p>下载<a href="../files/visualize_sdf_3d.py" download>visualize_sdf_3d.py</a>，放到项目根目录。环境已经安装 scikit-image 与 trimesh，可直接执行。</p>
+<pre><code class="language-bash">source /home/ps/jishaobin/research-field-NTE/activate-deepsdf.sh
+
+OMP_NUM_THREADS=4 python &quot;$NTE_ROOT/visualize_sdf_3d.py&quot; \
+  -e &quot;$NTE_ROOT/experiments/smoke&quot; \
+  -c 1000 \
+  --resolution 128</code></pre>
+<p>程序打印预测 SDF 范围、顶点和面数量，以及 <code>watertight</code> 闭合状态。若采样场没有跨过零，程序报告范围并跳过该实例。输出文件如下。</p>
+<pre><code class="language-text">experiments/smoke/Visualizations/1000/Smoke/sphere/sphere_10000.html
+experiments/smoke/Visualizations/1000/Smoke/sphere/sphere_10001.html</code></pre>
+<p>需要更细的提取网格时，可增加分辨率并启用 GPU。点数随每轴分辨率的三次方增长。</p>
+<pre><code class="language-bash">CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 \
+  python &quot;$NTE_ROOT/visualize_sdf_3d.py&quot; \
+  -e &quot;$NTE_ROOT/experiments/smoke&quot; \
+  -c 1000 \
+  --resolution 192 \
+  --device cuda</code></pre>
+<p>同一检查点重复导出会更新同名 HTML。文件内嵌网格与查看器资源，可复制到本地离线打开。</p>
+<details><summary>查看 visualize_sdf_3d.py 完整代码</summary>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Render the zero surfaces of DeepSDF training instances as standalone HTML.&quot;&quot;&quot;
+
+import argparse
+import importlib
+import json
+from pathlib import Path
+import sys
+
+import numpy as np
+from skimage.measure import marching_cubes
+import torch
+import trimesh
+from trimesh.viewer.notebook import scene_to_html
+
+
+PROJECT = Path(__file__).resolve().parent
+DEEPSDF = PROJECT / &quot;DeepSDF&quot;
+
+
+def load_experiment(experiment, checkpoint, device):
+    specs = json.loads((experiment / &quot;specs.json&quot;).read_text())
+    split_path = DEEPSDF / specs[&quot;TrainSplit&quot;]
+    split = json.loads(split_path.read_text())
+    instances = [
+        Path(dataset) / class_name / name
+        for dataset, classes in split.items()
+        for class_name, names in classes.items()
+        for name in names
+    ]
+
+    sys.path.insert(0, str(DEEPSDF))
+    arch = importlib.import_module(&quot;networks.&quot; + specs[&quot;NetworkArch&quot;])
+    decoder = arch.Decoder(specs[&quot;CodeLength&quot;], **specs[&quot;NetworkSpecs&quot;])
+    filename = f&quot;{checkpoint}.pth&quot;
+    model = torch.load(
+        experiment / &quot;ModelParameters&quot; / filename,
+        map_location=&quot;cpu&quot;,
+        weights_only=True,
+    )
+    latent = torch.load(
+        experiment / &quot;LatentCodes&quot; / filename,
+        map_location=&quot;cpu&quot;,
+        weights_only=True,
+    )
+    if model[&quot;epoch&quot;] != latent[&quot;epoch&quot;]:
+        raise ValueError(&quot;Model and latent codes are from different epochs.&quot;)
+
+    decoder.load_state_dict({
+        key.removeprefix(&quot;module.&quot;): value
+        for key, value in model[&quot;model_state_dict&quot;].items()
+    })
+    codes = latent[&quot;latent_codes&quot;]
+    if isinstance(codes, dict):
+        codes = codes[&quot;weight&quot;]
+    if codes.ndim == 3 and codes.shape[1] == 1:
+        codes = codes.squeeze(1)
+    if codes.shape != (len(instances), specs[&quot;CodeLength&quot;]):
+        raise ValueError(&quot;Latent codes do not match the training split or code length.&quot;)
+
+    return decoder.to(device).eval(), codes.to(device), instances, model[&quot;epoch&quot;]
+
+
+@torch.inference_mode()
+def sample_field(decoder, code, resolution, batch_size=32768):
+    &quot;&quot;&quot;Sample an (x, y, z) volume over the normalized cube [-1, 1]^3.&quot;&quot;&quot;
+    axis = torch.linspace(-1, 1, resolution, device=code.device, dtype=code.dtype)
+    count = resolution ** 3
+    plane_size = resolution ** 2
+    values = np.empty(count, dtype=np.float32)
+    for start in range(0, count, batch_size):
+        end = min(start + batch_size, count)
+        index = torch.arange(start, end, device=code.device)
+        xyz = torch.stack((
+            axis[index // plane_size],
+            axis[(index // resolution) % resolution],
+            axis[index % resolution],
+        ), dim=1)
+        inputs = torch.cat((code.expand(len(xyz), -1), xyz), dim=1)
+        values[start:end] = decoder(inputs).flatten().cpu().numpy()
+    return values.reshape((resolution,) * 3)
+
+
+def extract_zero_surface(field):
+    if not np.isfinite(field).all():
+        raise ValueError(&quot;Predicted SDF contains non-finite values.&quot;)
+    if not field.min() &lt; 0 &lt; field.max():
+        return None
+
+    step = 2.0 / (field.shape[0] - 1)
+    vertices, faces, _, _ = marching_cubes(
+        field,
+        level=0.0,
+        spacing=(step, step, step),
+        gradient_direction=&quot;ascent&quot;,
+        allow_degenerate=False,
+    )
+    mesh = trimesh.Trimesh(vertices=vertices - 1.0, faces=faces, process=False)
+    mesh.fix_normals()
+    mesh.visual.face_colors = [71, 155, 207, 255]
+    return mesh
+
+
+def write_html(mesh, destination):
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(scene_to_html(mesh.scene()), encoding=&quot;utf-8&quot;)
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        &quot;-e&quot;, &quot;--experiment&quot;, type=Path, default=PROJECT / &quot;experiments&quot; / &quot;smoke&quot;,
+        help=&quot;Experiment containing specs.json, ModelParameters and LatentCodes.&quot;,
+    )
+    parser.add_argument(
+        &quot;-c&quot;, &quot;--checkpoint&quot;, default=&quot;latest&quot;, help=&quot;Epoch number or latest.&quot;
+    )
+    parser.add_argument(
+        &quot;--resolution&quot;, type=int, default=128, help=&quot;Grid samples per axis (default: 128).&quot;
+    )
+    parser.add_argument(&quot;--device&quot;, choices=(&quot;cpu&quot;, &quot;cuda&quot;), default=&quot;cpu&quot;)
+    args = parser.parse_args()
+    if args.checkpoint != &quot;latest&quot; and not args.checkpoint.isdecimal():
+        parser.error(&quot;--checkpoint must be an epoch number or latest&quot;)
+    if args.resolution &lt; 2:
+        parser.error(&quot;--resolution must be at least 2&quot;)
+    if args.device == &quot;cuda&quot; and not torch.cuda.is_available():
+        parser.error(&quot;--device cuda was requested, but CUDA is unavailable&quot;)
+
+    decoder, codes, instances, epoch = load_experiment(
+        args.experiment, args.checkpoint, args.device
+    )
+    output_dir = args.experiment / &quot;Visualizations&quot; / str(epoch)
+    written = 0
+    for instance, code in zip(instances, codes):
+        field = sample_field(decoder, code, args.resolution)
+        print(f&quot;{instance}: SDF range [{field.min():.6g}, {field.max():.6g}]&quot;)
+        mesh = extract_zero_surface(field)
+        if mesh is None:
+            print(&quot;  No sign change on this grid. No zero surface was exported.&quot;)
+            continue
+
+        output = (output_dir / instance).with_suffix(&quot;.html&quot;)
+        write_html(mesh, output)
+        print(f&quot;  {len(mesh.vertices)} vertices, {len(mesh.faces)} faces, &quot;
+              f&quot;watertight={mesh.is_watertight}&quot;)
+        print(f&quot;  {output}&quot;)
+        written += 1
+
+    return 0 if written else 1
+
+
+if __name__ == &quot;__main__&quot;:
+    raise SystemExit(main())</code></pre></details>
+</section><section aria-labelledby="browser">
+<h2 id="browser">在本地浏览器中查看</h2>
+
+<p>在 Mac 本地终端执行下面命令。<code>scp</code> 会把服务器上的网页复制到本地结果目录。</p>
+<pre><code class="language-bash">mkdir -p deepsdf-spheres
+scp &#x27;amd128:/home/ps/jishaobin/research-field-NTE/experiments/smoke/Visualizations/1000/Smoke/sphere/*.html&#x27; \
+  deepsdf-spheres/
+open deepsdf-spheres/sphere_10000.html deepsdf-spheres/sphere_10001.html</code></pre>
+<p>拖动旋转模型，滚轮缩放。Windows 或 Linux 可在文件管理器中用浏览器打开复制后的 HTML。</p>
+
+</section><section aria-labelledby="ply">
+<h2 id="ply">使用 DeepSDF 原版 PLY 导出</h2>
+
+<p>应用<a href="../setup/index.html#compatibility">兼容补丁</a>后运行以下命令。球体数据直接在归一化坐标中生成，使用 <code>--keep_normalization</code> 保留尺度。否则原版脚本会尝试加载本实验没有生成的归一化参数文件。</p>
+<pre><code class="language-bash">cd &quot;$NTE_ROOT/DeepSDF&quot;
+CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 \
+  python generate_training_meshes.py \
+  -e &quot;$NTE_ROOT/experiments/smoke&quot; \
+  -c 1000 \
+  --keep_normalization</code></pre><pre><code class="language-text">experiments/smoke/TrainingMeshes/1000/Smoke/sphere/sphere_10000.ply
+experiments/smoke/TrainingMeshes/1000/Smoke/sphere/sphere_10001.ply</code></pre>
+<p>用 Python 检查文件的顶点、三角形数量和闭合状态。</p>
+<pre><code class="language-bash">python - &lt;&lt;&#x27;PY&#x27;
+import os
+from pathlib import Path
+import trimesh
+
+folder = Path(os.environ[&quot;NTE_ROOT&quot;]) / \
+    &quot;experiments/smoke/TrainingMeshes/1000/Smoke/sphere&quot;
+for path in sorted(folder.glob(&quot;*.ply&quot;)):
+    mesh = trimesh.load_mesh(path, process=False)
+    print(path.name, len(mesh.vertices), len(mesh.faces), mesh.is_watertight)
+PY</code></pre>
+</section><section aria-labelledby="algorithm">
+<h2 id="algorithm">曲面提取过程</h2>
+
+<ol>
+<li>读取同一轮模型和潜向量，按 <code>train.json</code> 顺序配对实例。</li>
+<li>在 <code>[-1,1]³</code> 上生成规则网格，分批把坐标和潜向量输入解码器。</li>
+<li>将预测整理成三维 SDF 数组，检查有限性与正负范围。</li>
+<li>调用 <code>marching_cubes(..., level=0.0)</code>，指定网格间距，并恢复归一化坐标。</li>
+<li>构造 trimesh 网格、修正法向，再写入带查看器的 HTML。</li>
+</ol>
+<p>浏览器展示离散三角网格，顶点由预测场的零等值面计算得到。后续直接做神经隐式求交时，可以单独查询网络函数。<a href="https://scikit-image.org/docs/0.22.x/api/skimage.measure.html#skimage.measure.marching_cubes">Marching Cubes API</a> · <a href="https://trimesh.org/trimesh.viewer.notebook.html#trimesh.viewer.notebook.scene_to_html">trimesh HTML 导出</a></p>
+
+</section>
+      <footer>
+        <nav class="page-turn" aria-label="前后章节"><a href="../training/index.html">上一篇 · 球体训练</a> <a href="../troubleshooting/index.html">下一篇 · 排错记录</a></nav>
+        <p><a href="../index.html#resources">脚本与资料</a> · <a href="../../projects.html">返回 Projects</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

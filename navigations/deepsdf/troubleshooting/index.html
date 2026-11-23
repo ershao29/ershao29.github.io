@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="记录 amd128 部署中遇到的索引连接、慢速下载、缓存和旧版代码警告。">
+    <title>下载、环境与兼容问题记录 | DeepSDF | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/deepsdf.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <main id="content">
+      <nav aria-label="当前位置"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../index.html">DeepSDF</a></nav>
+      <header>
+        <h1>下载、环境与兼容问题记录</h1>
+        <p class="lead">记录 amd128 部署中遇到的索引连接、慢速下载、缓存和旧版代码警告。</p>
+        <p class="updated">更新于 <time datetime="2026-11-23">2026-11-23</time> · amd128 部署与实验记录</p>
+      </header>
+      <nav class="chapter-nav" aria-label="DeepSDF 教程">
+        <a href="../index.html">DeepSDF</a>
+        <a href="../setup/index.html">环境安装</a>
+        <a href="../training/index.html">球体训练</a>
+        <a href="../visualization/index.html">三维可视化</a>
+        <a href="../troubleshooting/index.html" aria-current="page">排错记录</a>
+      </nav>
+      <nav class="contents" aria-label="本页目录">
+        <a href="#network">下载与索引</a>
+        <a href="#tmux">tmux</a>
+        <a href="#cache">缓存与安装</a>
+        <a href="#warnings">警告</a>
+        <a href="#nvjitlink">运行库路径</a>
+        <a href="#mesh">网格问题</a>
+      </nav>
+<section aria-labelledby="network">
+<h2 id="network">下载源、超时与下载速度</h2>
+
+<p>本地 PyTorch wheel 被读取后，pip 会继续处理声明的依赖。NVRTC、CUDA Runtime、cuDNN 和 cuBLAS 是不同的包，上传一个 wheel 后仍需要其余依赖。</p>
+<div class="table-scroll"><table>
+<caption>本次部署涉及的三个索引</caption>
+<thead><tr><th scope="col">索引</th><th scope="col">作用与观察</th></tr></thead>
+<tbody>
+<tr><th scope="row">download.pytorch.org/whl/cu124</th><td>提供 PyTorch cu124 构建；部分 NVIDIA 文件指向 pypi.nvidia.com</td></tr>
+<tr><th scope="row">pypi.org/simple</th><td>公共 Python 索引，可补齐本地 PyTorch wheel 的依赖</td></tr>
+<tr><th scope="row">pypi.tuna.tsinghua.edu.cn/simple</th><td>清华 PyPI 镜像，相同 cuBLAS 文件在本次 IPv6 测速中更快</td></tr>
+</tbody></table></div>
+<p>2026-11-12 的短时测速中，官方 PyPI 约 29 kB/s，清华 IPv6 约 1.7 MB/s。IPv4 曾连接超时。这些数字反映当时网络状态；索引页可访问，还需验证实际 wheel 文件的下载连接。</p>
+<p><code>ping baidu.com</code> 检查到百度的 ICMP 连通性，pip 访问的是文件服务器的 HTTPS 连接。Conda 环境激活后，命令行 <code>--index-url</code> 仍决定本次 pip 索引。Conda channels 配置只管理 Conda 包。</p>
+<pre><code class="language-bash">wheel_dir=&quot;$NTE_ROOT/downloads&quot;
+python -m pip install \
+  &quot;$wheel_dir/torch-2.5.1+cu124-cp310-cp310-linux_x86_64.whl&quot; \
+  &quot;$wheel_dir/nvidia_cuda_nvrtc_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl&quot; \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+  --timeout 60</code></pre>
+<p>确认开头 <code>Looking in indexes</code> 显示预期索引。指定本地 <code>+cu124</code> wheel 后，索引用于获取剩余依赖。<code>+cpu</code> wheel 无法用于本教程直接调用 <code>.cuda()</code> 的训练。<a href="https://pip.pypa.io/en/stable/topics/configuration/">pip 配置说明</a> · <a href="https://mirrors.tuna.tsinghua.edu.cn/help/pypi/">清华镜像用法</a></p>
+
+</section><section aria-labelledby="tmux">
+<h2 id="tmux">用 tmux 持续下载和训练</h2>
+
+<p>服务器已安装 tmux。在普通 SSH 终端运行的 pip，可先按 <kbd>Ctrl</kbd>+<kbd>C</kbd> 取消，再进入新会话重新执行。缓存可复用；下载到一半的文件能否续传取决于下载状态和服务器支持。</p>
+<pre><code class="language-bash">tmux new -s deepsdf-download &#x27;bash --noprofile --norc&#x27;
+
+source /home/ps/jishaobin/research-field-NTE/activate-deepsdf.sh
+# 在会话中执行 pip 命令或训练命令。</code></pre>
+<p>按 <kbd>Ctrl</kbd>+<kbd>b</kbd>，松开后按 <kbd>d</kbd> 分离会话。断开 SSH 后任务继续运行。重新登录后恢复。</p>
+<pre><code class="language-bash">tmux attach -t deepsdf-download</code></pre>
+</section><section aria-labelledby="cache">
+<h2 id="cache">Collecting 表示什么，包放在哪里</h2>
+
+<p><code>Collecting</code> 表示解析依赖和选择候选包。<code>Using cached ...whl.metadata</code> 表示使用缓存的元数据。进入 <code>Installing collected packages</code> 后才安装，完成后用 <code>pip show</code> 检查实际位置。</p>
+<div class="table-scroll"><table>
+<caption>项目内的路径</caption>
+<thead><tr><th scope="col">类型</th><th scope="col">位置</th></tr></thead>
+<tbody>
+<tr><th scope="row">上传的 wheel</th><td><code>$NTE_ROOT/downloads/</code></td></tr>
+<tr><th scope="row">pip HTTP 缓存</th><td><code>$NTE_ROOT/.cache/pip/http-v2/</code></td></tr>
+<tr><th scope="row">已安装 Python 包</th><td><code>$NTE_ROOT/envs/deepsdf/lib/python3.10/site-packages/</code></td></tr>
+</tbody></table></div>
+<pre><code class="language-bash">python -m pip show torch filelock nvidia-cuda-runtime-cu12
+python -m pip cache dir
+python -m pip check</code></pre>
+</section><section aria-labelledby="warnings">
+<h2 id="warnings">训练中的 PyTorch 警告</h2>
+
+<h3>torch.load 的 weights_only 提醒</h3>
+<p>PyTorch 2.5.1 提醒未来将更改加载默认值。本实验的模型、潜向量、优化器与日志由字典、张量和基本类型组成，相关入口已显式使用 <code>weights_only=True</code>，并用真实检查点验证恢复。</p>
+<pre><code class="language-python">data = torch.load(full_filename, weights_only=True)</code></pre>
+<p>这些修复位于 <code>train_deep_sdf.py</code>、<code>deep_sdf/workspace.py</code> 和 <code>generate_training_meshes.py</code>。</p>
+<h3>Using -1 to represent CPU tensor is deprecated</h3>
+<p>旧版 DeepSDF 把潜向量留在 CPU、解码器放在 GPU，并用 DataParallel 分发输入。反向传播把潜向量梯度传回 CPU 时，PyTorch 2.5.1 内部仍使用 <code>-1</code> 标识 CPU，触发 FutureWarning。当前组合可继续训练，解码器仍在 GPU 计算；这条警告保留在实测记录中。</p>
+
+</section><section aria-labelledby="nvjitlink">
+<h2 id="nvjitlink">nvJitLink 运行库路径</h2>
+
+<p>服务器当前的 <code>env-local.sh</code> 额外设置了 NVIDIA wheel 的 nvJitLink 库目录。若导入 PyTorch 时遇到 <code>libcusparse</code> 或 <code>__nvJitLink...</code> 的 undefined symbol，应核对依赖版本及库搜索顺序，再在项目 shell 中将匹配的 wheel 库目录放到前面。</p>
+<pre><code class="language-bash">export LD_LIBRARY_PATH=&quot;$NTE_ROOT/envs/deepsdf/lib/python3.10/site-packages/nvidia/nvjitlink/lib:$LD_LIBRARY_PATH&quot;
+python -c &#x27;import torch; print(torch.__version__, torch.version.cuda)&#x27;</code></pre>
+<p>这项设置在当前 shell 及子进程中生效。参考脚本下载保留了服务器现有的这一设置。</p>
+
+</section><section aria-labelledby="mesh">
+<h2 id="mesh">网格导出与续训检查</h2>
+
+<ul>
+<li><strong>没有零面。</strong> 第 2 轮曾全部预测为正，先继续训练，检查 SDF 范围是否跨零。</li>
+<li><strong>marching_cubes_lewiner 不存在。</strong> scikit-image 0.22 使用 <code>marching_cubes</code> API。</li>
+<li><strong>CPU/CUDA 设备不一致。</strong> 原导出路径通过 <code>latent_vector.to(device)</code> 将潜向量移到解码器设备。</li>
+<li><strong>网格坐标异常。</strong> 用整数索引 <code>y = (index // N) % N</code> 和 <code>x = index // (N * N)</code>。</li>
+<li><strong>缺少归一化参数。</strong> 本球体数据使用归一化坐标，原版导出添加 <code>--keep_normalization</code>。</li>
+<li><strong>恢复后没有继续训练。</strong> 检查 <code>NumEpochs</code> 是否大于恢复轮数，原始 <code>train_demo.py</code> 会把它写回 2。</li>
+<li><strong>数据或批次为空。</strong> 检查 DataSource、TrainSplit 和实际样本。原训练器使用 <code>drop_last=True</code>，ScenesPerBatch 应不超过训练实例数量。</li>
+</ul>
+<p>具体修复见<a href="../setup/index.html#compatibility">兼容补丁</a>，导出操作见<a href="../visualization/index.html">三维可视化</a>。</p>
+
+</section>
+      <footer>
+        <nav class="page-turn" aria-label="前后章节"><a href="../visualization/index.html">上一篇 · 三维可视化</a></nav>
+        <p><a href="../index.html#resources">脚本与资料</a> · <a href="../../projects.html">返回 Projects</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

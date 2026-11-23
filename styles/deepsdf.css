@@ -1,0 +1,182 @@
+@import url("implicit-geometry.css");
+
+main {
+  max-width: 90ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+section,
+h2 {
+  scroll-margin-top: 1.5rem;
+}
+
+.updated,
+caption {
+  color: #52616e;
+}
+
+.chapter-nav,
+.contents,
+.page-turn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.25rem;
+}
+
+.chapter-nav {
+  margin-top: 1.75rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #dce3e9;
+}
+
+.chapter-nav a[aria-current="page"] {
+  color: #253f54;
+  font-weight: 700;
+  text-decoration-thickness: 2px;
+}
+
+.contents {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #eef4f9;
+  border-left: 3px solid #21679d;
+}
+
+code,
+kbd {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+pre {
+  max-width: 100%;
+  margin: 1.25rem 0;
+  padding: 1.15rem;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  border: 1px solid #dce3e9;
+  border-radius: 6px;
+  background: #f4f6f8;
+  line-height: 1.6;
+  tab-size: 4;
+}
+
+pre code {
+  font-size: 0.9375rem;
+}
+
+.note,
+.formula {
+  margin: 1.25rem 0;
+  padding: 0.85rem 1.1rem;
+  background: #eef4f9;
+  border-left: 3px solid #21679d;
+}
+
+.note p {
+  margin: 0.25rem 0;
+}
+
+.formula {
+  color: #253f54;
+  line-height: 1.9;
+}
+
+.guide-list article {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+}
+
+.guide-list h3 {
+  margin-top: 0;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+caption {
+  margin-bottom: 0.75rem;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #dce3e9;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead {
+  background: #eef4f9;
+}
+
+th {
+  min-width: 8rem;
+}
+
+details {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid #dce3e9;
+  border-radius: 6px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+footer {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #dce3e9;
+}
+
+.page-turn {
+  justify-content: space-between;
+}
+
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #065da9;
+  outline-offset: 4px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -5rem;
+  left: 1rem;
+  padding: 0.75rem;
+  background: white;
+  z-index: 1;
+}
+
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+@media (max-width: 600px) {
+  main {
+    margin: 0;
+    padding: 1.15rem;
+    border-radius: 0;
+  }
+
+  th,
+  td {
+    padding: 0.6rem;
+  }
+
+  pre {
+    padding: 0.8rem;
+  }
+}

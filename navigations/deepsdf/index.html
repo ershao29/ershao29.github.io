@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="从独立 Miniforge 环境到 SDF 采样、GPU 训练和浏览器三维可视化。">
+    <title>DeepSDF 部署与球体重建 | DeepSDF | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../styles/deepsdf.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <main id="content">
+      <nav aria-label="当前位置"><a href="../../index.html">Home</a> / <a href="../projects.html">Projects</a> / <a href="index.html">DeepSDF</a></nav>
+      <header>
+        <h1>DeepSDF 部署与球体重建</h1>
+        <p class="lead">从独立 Miniforge 环境到 SDF 采样、GPU 训练和浏览器三维可视化。</p>
+        <p class="updated">更新于 <time datetime="2026-11-23">2026-11-23</time> · amd128 部署与实验记录</p>
+      </header>
+      <nav class="chapter-nav" aria-label="DeepSDF 教程">
+        <a href="index.html" aria-current="page">DeepSDF</a>
+        <a href="setup/index.html">环境安装</a>
+        <a href="training/index.html">球体训练</a>
+        <a href="visualization/index.html">三维可视化</a>
+        <a href="troubleshooting/index.html">排错记录</a>
+      </nav>
+      <nav class="contents" aria-label="本页目录">
+        <a href="#purpose">实验目标</a>
+        <a href="#route">阅读路线</a>
+        <a href="#verified">验证记录</a>
+        <a href="#layout">目录结构</a>
+        <a href="#resources">脚本与资料</a>
+      </nav>
+<section aria-labelledby="purpose">
+<h2 id="purpose">为什么用球体训练</h2>
+
+<p>球体解析 SDF 为 <code>d(x, y, z) = sqrt(x² + y² + z²) − r</code>，它能直接用于曲面提取。这里用答案已知的球体，检查采样、训练、检查点保存和曲面重建能否贯通。</p>
+<p>SdfSampler 把解析函数变成 <code>[x, y, z, sdf]</code> 监督样本。DeepSDF 用共享解码器 <code>fθ(z, x)</code> 学习形状，每个球各有一个潜向量 <code>z</code>。可视化时在规则网格上查询训练好的网络，再提取零等值面。</p>
+<p class="formula">解析 SDF → 点样本 → DeepSDF 训练 → 预测距离场 → SDF = 0 球面</p>
+<p>两个训练球的半径为 0.4 和 0.6。重建它们可以检查训练拟合效果；对未见形状的恢复能力需要另设测试实例。DeepSDF 使用共享模型表示一类形状，这也是后续变形燃料棒实验可以探索的方向。<a href="https://arxiv.org/abs/1901.05103">DeepSDF 论文</a></p>
+
+</section><section aria-labelledby="route">
+<h2 id="route">部署与实验路线</h2>
+
+<div class="guide-list">
+  <article><h3><a href="setup/index.html">环境安装</a></h3><p>Miniforge、独立环境和缓存，本地 cu124 wheel 安装，以及旧版 DeepSDF 兼容补丁。</p></article>
+  <article><h3><a href="training/index.html">球体训练</a></h3><p>解释 train_demo.py，完成两轮测试，再从检查点续训到 1000 轮。</p></article>
+  <article><h3><a href="visualization/index.html">三维可视化</a></h3><p>导出 PLY，或用 Python 生成自包含 HTML，在浏览器中旋转和缩放球面。</p></article>
+  <article><h3><a href="troubleshooting/index.html">排错记录</a></h3><p>索引超时、慢速下载、tmux、缓存位置与 PyTorch 警告。</p></article>
+</div>
+
+</section><section aria-labelledby="verified">
+<h2 id="verified">已验证的环境与结果</h2>
+
+<div class="table-scroll"><table>
+<caption>2026-11-23 再次核对的 amd128 环境</caption>
+<thead><tr><th scope="col">项目</th><th scope="col">配置</th></tr></thead>
+<tbody>
+<tr><th scope="row">系统 / GPU</th><td>Ubuntu 22.04，x86_64；2 × RTX 3090，各 24 GB</td></tr>
+<tr><th scope="row">NVIDIA 驱动</th><td>560.35.05</td></tr>
+<tr><th scope="row">Python / PyTorch</th><td>3.10.22 / 2.5.1+cu124，CUDA runtime 12.4</td></tr>
+<tr><th scope="row">数值库</th><td>NumPy 1.26.4，SciPy 1.11.4</td></tr>
+<tr><th scope="row">可视化库</th><td>scikit-image 0.22.0，Matplotlib 3.8.4，trimesh 5.2.0</td></tr>
+<tr><th scope="row">已通过的流程</th><td>GPU 运算、两球采样与训练、检查点恢复、1000 轮 PLY 导出</td></tr>
+</tbody></table></div>
+<p>第 2 轮检查点在 65³ 网格上的预测值全部为正，当时没有可提取的零面。第 1000 轮经 256³ 采样导出的两个网格均闭合，分别有 49,220 和 110,554 个顶点。网格闭合性描述拓扑情况，输运适用性还要验证交点、路径长度和材料界面误差。</p>
+
+</section><section aria-labelledby="layout">
+<h2 id="layout">工作目录</h2>
+<pre><code class="language-text">/home/ps/jishaobin/research-field-NTE/
+├── miniforge3/                 # Conda 管理器
+├── envs/deepsdf/               # 独立 Python 环境
+├── downloads/                  # 安装包与上传的 wheel
+├── .cache/                     # Conda、pip 和运行库缓存
+├── .tmp/                       # 原部署环境的运行临时目录
+├── DeepSDF/                    # 训练与原版网格导出
+├── SdfSampler/                 # SDF 建模与采样
+├── env-local.sh                # 项目环境变量
+├── activate-deepsdf.sh         # 激活入口
+├── train_demo.py               # 两球采样和配置生成
+├── visualize_sdf_3d.py          # 零面提取与 HTML 导出
+├── data/smoke/SdfSamples/
+└── experiments/smoke/
+    ├── specs.json
+    ├── train.json
+    ├── ModelParameters/
+    ├── LatentCodes/
+    ├── OptimizerParameters/
+    ├── TrainingMeshes/
+    └── Visualizations/</code></pre>
+<p>本次网页整理的临时文件位于 <code>/home/ps/jishaobin/local-tmp</code>。上面的 <code>.tmp</code> 是已有 DeepSDF 运行环境中的配置。</p>
+
+</section><section aria-labelledby="resources">
+<h2 id="resources">脚本与资料</h2>
+
+<p>这些文件来自服务器当前项目。下载后可阅读或复制到对应工作目录。环境脚本中的路径针对 amd128，可视化脚本依赖相邻的 <code>DeepSDF/</code> 仓库。</p>
+<ul>
+<li><a href="files/env-local.sh" download>env-local.sh</a> · <a href="files/condarc-local.yml" download>condarc-local.yml</a> · <a href="files/activate-deepsdf.sh" download>activate-deepsdf.sh</a></li>
+<li><a href="files/constraints-deepsdf.txt" download>依赖约束</a> · <a href="files/train_demo.py" download>train_demo.py</a> · <a href="files/visualize_sdf_3d.py" download>visualize_sdf_3d.py</a></li>
+<li><a href="files/deepsdf-cu124-compatibility.patch" download>DeepSDF 兼容补丁</a>，基于上游提交 <code>48c19b8</code></li>
+</ul>
+<ul>
+<li><a href="https://github.com/conda-forge/miniforge">Miniforge 官方安装说明</a> · <a href="https://pytorch.org/get-started/previous-versions/">PyTorch 版本安装命令</a></li>
+<li><a href="https://github.com/facebookresearch/DeepSDF">DeepSDF 官方仓库</a> · <a href="https://github.com/mkofler96/SdfSampler">SdfSampler 仓库</a></li>
+<li><a href="https://pip.pypa.io/en/stable/topics/configuration/">pip 配置与优先级</a> · <a href="https://mirrors.tuna.tsinghua.edu.cn/help/pypi/">清华 PyPI 镜像</a></li>
+<li><a href="https://scikit-image.org/docs/0.22.x/api/skimage.measure.html#skimage.measure.marching_cubes">Marching Cubes</a> · <a href="https://trimesh.org/trimesh.viewer.notebook.html#trimesh.viewer.notebook.scene_to_html">trimesh HTML 导出</a></li>
+</ul>
+
+</section>
+      <footer>
+        <nav class="page-turn" aria-label="前后章节"><a href="setup/index.html">下一篇 · 环境安装</a></nav>
+        <p><a href="index.html#resources">脚本与资料</a> · <a href="../projects.html">返回 Projects</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,6 @@
+numpy==1.26.4
+scipy==1.11.4
+scikit-image==0.22.0
+matplotlib==3.8.4
+plyfile==1.0.3
+torch==2.5.1

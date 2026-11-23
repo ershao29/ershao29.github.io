@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="理解 train_demo.py，用两个已知球体贯通采样、训练和检查点恢复。">
+    <title>球体 SDF 采样与续训 | DeepSDF | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/deepsdf.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <main id="content">
+      <nav aria-label="当前位置"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../index.html">DeepSDF</a></nav>
+      <header>
+        <h1>球体 SDF 采样与续训</h1>
+        <p class="lead">理解 train_demo.py，用两个已知球体贯通采样、训练和检查点恢复。</p>
+        <p class="updated">更新于 <time datetime="2026-11-23">2026-11-23</time> · amd128 部署与实验记录</p>
+      </header>
+      <nav class="chapter-nav" aria-label="DeepSDF 教程">
+        <a href="../index.html">DeepSDF</a>
+        <a href="../setup/index.html">环境安装</a>
+        <a href="../training/index.html" aria-current="page">球体训练</a>
+        <a href="../visualization/index.html">三维可视化</a>
+        <a href="../troubleshooting/index.html">排错记录</a>
+      </nav>
+      <nav class="contents" aria-label="本页目录">
+        <a href="#sphere">解析 SDF</a>
+        <a href="#demo">准备脚本</a>
+        <a href="#settings">配置字段</a>
+        <a href="#smoke">两轮测试</a>
+        <a href="#continue">1000 轮续训</a>
+        <a href="#meaning">实验意义</a>
+      </nav>
+<section aria-labelledby="sphere">
+<h2 id="sphere">解析球体与监督样本</h2>
+
+<p><code>train_demo.py</code> 准备样本和配置，<code>train_deep_sdf.py</code> 更新网络。球体内部距离为负，外部为正，表面为零。</p>
+<pre><code class="language-python">class SphereSDF(SDFBase):
+    def __init__(self, radius):
+        self.radius = radius
+
+    def __call__(self, queries):
+        distances = np.linalg.norm(queries, axis=1) - self.radius
+        return distances.reshape(-1, 1)</code></pre>
+<p><code>queries</code> 是 N×3 坐标，<code>axis=1</code> 为每个点计算到原点的距离，减半径后返回 N×1 的欧氏 SDF。</p>
+<p>脚本固定 NumPy 采样种子为 42，在 <code>[-1,1]³</code> 给半径 0.4、0.6 的球各均匀采样 20,000 点。按符号保存为 <code>pos</code>、<code>neg</code> 数组，每行是 <code>[x, y, z, sdf]</code>，并检查非空、列数和数值有限性。NumPy 种子控制采样；完整训练还涉及 PyTorch 随机初始化和抽样。</p>
+<pre><code class="language-text">data/smoke/SdfSamples/Smoke/sphere/sphere_10000.npz
+data/smoke/SdfSamples/Smoke/sphere/sphere_10001.npz
+experiments/smoke/train.json
+experiments/smoke/specs.json</code></pre>
+<p>SdfSampler 遇到已有同名样本文件会复用它。修改球半径或样本数量后，应使用新的数据与实验目录。训练实例顺序与潜向量顺序必须保持一致。</p>
+
+</section><section aria-labelledby="demo">
+<h2 id="demo">首次准备实验</h2>
+
+<p>下载<a href="../files/train_demo.py" download>train_demo.py</a>，保存到项目根目录。首次实验运行以下命令。</p>
+<pre><code class="language-bash">source /home/ps/jishaobin/research-field-NTE/activate-deepsdf.sh
+python &quot;$NTE_ROOT/train_demo.py&quot;</code></pre>
+<div class="note"><p>当前脚本会重写 <code>specs.json</code> 与 <code>train.json</code>，把总轮数设置为 2。已有 500 或 1000 轮实验时，可直接进行后续续训或可视化。</p></div>
+<details><summary>查看 train_demo.py 完整代码</summary>
+<pre><code class="language-python">import json
+import os
+from pathlib import Path
+import numpy as np
+from SdfSampler.sdf_sampler import SDFSampler, SDFBase
+
+root = Path(os.environ[&quot;NTE_ROOT&quot;])
+data = root / &quot;data&quot; / &quot;smoke&quot;
+exp = root / &quot;experiments&quot; / &quot;smoke&quot;
+exp.mkdir(parents=True, exist_ok=True)
+
+class SphereSDF(SDFBase):
+    def __init__(self, radius):
+        self.radius = radius
+    def __call__(self, queries):
+        return (np.linalg.norm(queries, axis=1) - self.radius).reshape(-1, 1)
+
+np.random.seed(42)
+sampler = SDFSampler(
+    outdir=str(data / &quot;SdfSamples&quot;),
+    splitdir=str(exp),
+)
+info = {&quot;dataset_name&quot;: &quot;Smoke&quot;, &quot;class_name&quot;: &quot;sphere&quot;}
+ids = sampler.sample_sdfs(
+    [SphereSDF(0.4), SphereSDF(0.6)],
+    info, n_samples=20000,
+)
+sampler.write_json(&quot;train.json&quot;, info, ids)
+
+for p in data.rglob(&quot;*.npz&quot;):
+    with np.load(p) as arrays:
+        for key in (&quot;pos&quot;, &quot;neg&quot;):
+            a = arrays[key]
+            assert a.ndim == 2 and a.shape[1] == 4
+            assert len(a) &gt; 0 and np.isfinite(a).all()
+
+spec = json.loads(
+    (root / &quot;DeepSDF/examples/sofas/specs.json&quot;).read_text()
+)
+spec.update({
+    &quot;Description&quot;: &quot;Installation smoke test on two spheres&quot;,
+    &quot;DataSource&quot;: str(data),
+    &quot;TrainSplit&quot;: str(exp / &quot;train.json&quot;),
+    &quot;CodeLength&quot;: 16,
+    &quot;NetworkSpecs&quot;: {&quot;dims&quot;: [64, 64, 64]},
+    &quot;NumEpochs&quot;: 2,
+    &quot;SnapshotFrequency&quot;: 1,
+    &quot;AdditionalSnapshots&quot;: [],
+    &quot;LogFrequency&quot;: 1,
+    &quot;SamplesPerScene&quot;: 1024,
+    &quot;ScenesPerBatch&quot;: 2,
+    &quot;DataLoaderThreads&quot;: 0,
+})
+spec.pop(&quot;TestSplit&quot;, None)
+(exp / &quot;specs.json&quot;).write_text(json.dumps(spec, indent=2))
+print(&quot;Smoke experiment:&quot;, exp)</code></pre></details>
+</section><section aria-labelledby="settings">
+<h2 id="settings">配置字段的含义</h2>
+
+<div class="table-scroll"><table>
+<caption>两个球体的实验设置</caption>
+<thead><tr><th scope="col">字段</th><th scope="col">含义</th></tr></thead>
+<tbody>
+<tr><th scope="row">DataSource</th><td><code>data/smoke</code>，加载器会拼接 <code>SdfSamples/</code></td></tr>
+<tr><th scope="row">TrainSplit</th><td>训练实例的名称和顺序</td></tr>
+<tr><th scope="row">NetworkSpecs.dims</th><td><code>[64, 64, 64]</code>，三个隐藏层的宽度</td></tr>
+<tr><th scope="row">CodeLength</th><td>16，每个球对应一个可训练潜向量</td></tr>
+<tr><th scope="row">SamplesPerScene</th><td>1024，每次从一个球的正负样本各抽取 512 点</td></tr>
+<tr><th scope="row">ScenesPerBatch</th><td>2，两个球构成一个批次，每轮一次优化器更新</td></tr>
+<tr><th scope="row">NumEpochs</th><td>训练结束的总轮数</td></tr>
+<tr><th scope="row">SnapshotFrequency</th><td>编号检查点保存间隔</td></tr>
+<tr><th scope="row">LogFrequency</th><td>latest 检查点和日志更新间隔</td></tr>
+<tr><th scope="row">ClampingDistance</th><td>0.1，训练时把预测和真值截断到 ±0.1 后计算距离损失</td></tr>
+</tbody></table></div>
+<p>网络同时优化共享解码器和每个球的潜向量。原配置从沙发示例继承学习率计划和正则化，再改用小网络。两轮只有两次优化器更新，适合检查流程，通常不足以拟合清晰球面。</p>
+
+</section><section aria-labelledby="smoke">
+<h2 id="smoke">完成两轮测试</h2>
+
+<p>先查看显卡占用。以下命令只使用物理 GPU 0，并给 OpenMP 设置 4 个线程。</p>
+<pre><code class="language-bash">nvidia-smi
+cd &quot;$NTE_ROOT/DeepSDF&quot;
+CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 \
+  python train_deep_sdf.py \
+  -e &quot;$NTE_ROOT/experiments/smoke&quot;</code></pre>
+<p>完成后，应同时存在以下文件，分别保存模型、潜向量和优化器状态。恢复训练还会读取 <code>Logs.pth</code>。</p>
+<pre><code class="language-text">experiments/smoke/ModelParameters/2.pth
+experiments/smoke/LatentCodes/2.pth
+experiments/smoke/OptimizerParameters/2.pth</code></pre>
+</section><section aria-labelledby="continue">
+<h2 id="continue">续训到 1000 轮</h2>
+
+<p>保持数据、网络结构和实例顺序，修改已有实验的总轮数及保存间隔，再从相应检查点恢复。</p>
+<pre><code class="language-bash">python - &lt;&lt;&#x27;PY&#x27;
+import json
+import os
+from pathlib import Path
+
+path = Path(os.environ[&quot;NTE_ROOT&quot;]) / &quot;experiments/smoke/specs.json&quot;
+specs = json.loads(path.read_text())
+specs.update(NumEpochs=1000, SnapshotFrequency=100, LogFrequency=25)
+path.write_text(json.dumps(specs, indent=2) + &quot;\n&quot;)
+PY
+
+cd &quot;$NTE_ROOT/DeepSDF&quot;
+CUDA_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 \
+  python train_deep_sdf.py \
+  -e &quot;$NTE_ROOT/experiments/smoke&quot; \
+  --continue 2</code></pre>
+<p><code>--continue 2</code> 从第 2 轮结束状态恢复，日志显示 <code>starting from epoch 3</code>。总轮数 1000 表示训练到第 1000 轮。已完成 500 轮时用 <code>--continue 500</code>；中断后用 <code>--continue latest</code> 从最近一次完整保存恢复。</p>
+<p>每 100 轮保存编号检查点，每 25 轮更新 latest。已有第 1000 轮检查点时，直接进入<a href="../visualization/index.html">三维可视化</a>。修改网络宽度、潜向量维数或实例顺序后，应建立匹配的新实验。</p>
+<p>如果希望 <code>train_demo.py</code> 下次直接生成较长训练配置，将其中 <code>NumEpochs</code> 改为 1000、<code>SnapshotFrequency</code> 改为 100、<code>LogFrequency</code> 改为 25。</p>
+
+</section><section aria-labelledby="meaning">
+<h2 id="meaning">球体实验的意义与后续对照</h2>
+
+<p>解析 SDF 可以直接画球。这个实验验证网络从离散点样本恢复形状的流程。增加训练轮数帮助拟合，增加曲面提取网格的分辨率减小离散采样误差。</p>
+<p>后续弯曲棒可以用可靠的解析模型或网格作为参考。训练完成后另生成一批射线，在参考模型和学习模型上分别计算最近交点、进入/离开位置、材料穿越顺序与耗时。例如参考棒内路径长 0.80 mm，学习模型给出 0.73 mm，即使图形接近，路径长度已有差异。这样的几何检查更接近输运程序的使用方式。</p>
+
+</section>
+      <footer>
+        <nav class="page-turn" aria-label="前后章节"><a href="../setup/index.html">上一篇 · 环境安装</a> <a href="../visualization/index.html">下一篇 · 三维可视化</a></nav>
+        <p><a href="../index.html#resources">脚本与资料</a> · <a href="../../projects.html">返回 Projects</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

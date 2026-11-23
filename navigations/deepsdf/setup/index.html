@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="在 amd128 的项目目录内管理 Python、GPU 运行依赖和采样工具。">
+    <title>Miniforge 与 DeepSDF 环境安装 | DeepSDF | Shao-bin Ji</title>
+    <link rel="stylesheet" href="../../../styles/deepsdf.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#content">跳到正文</a>
+    <main id="content">
+      <nav aria-label="当前位置"><a href="../../../index.html">Home</a> / <a href="../../projects.html">Projects</a> / <a href="../index.html">DeepSDF</a></nav>
+      <header>
+        <h1>Miniforge 与 DeepSDF 环境安装</h1>
+        <p class="lead">在 amd128 的项目目录内管理 Python、GPU 运行依赖和采样工具。</p>
+        <p class="updated">更新于 <time datetime="2026-11-23">2026-11-23</time> · amd128 部署与实验记录</p>
+      </header>
+      <nav class="chapter-nav" aria-label="DeepSDF 教程">
+        <a href="../index.html">DeepSDF</a>
+        <a href="../setup/index.html" aria-current="page">环境安装</a>
+        <a href="../training/index.html">球体训练</a>
+        <a href="../visualization/index.html">三维可视化</a>
+        <a href="../troubleshooting/index.html">排错记录</a>
+      </nav>
+      <nav class="contents" aria-label="本页目录">
+        <a href="#isolation">项目环境</a>
+        <a href="#miniforge">Miniforge</a>
+        <a href="#pytorch">PyTorch</a>
+        <a href="#repositories">Python 依赖</a>
+        <a href="#compatibility">兼容补丁</a>
+        <a href="#activate">激活与验证</a>
+      </nav>
+<section aria-labelledby="isolation">
+<h2 id="isolation">连接服务器并设置项目环境</h2>
+
+<p>本页记录首次安装步骤。amd128 已有可用环境时，直接使用末尾的激活入口。安装集中在 <code>/home/ps/jishaobin/research-field-NTE</code>，通过当前 shell 中的脚本启用环境。</p>
+<pre><code class="language-bash">ssh amd128
+bash --noprofile --norc
+cd /home/ps/jishaobin/research-field-NTE
+mkdir -p downloads envs .cache .tmp
+
+cat &gt; env-local.sh &lt;&lt;&#x27;EOF&#x27;
+export NTE_ROOT=/home/ps/jishaobin/research-field-NTE
+export CONDARC=&quot;$NTE_ROOT/condarc-local.yml&quot;
+export CONDA_PKGS_DIRS=&quot;$NTE_ROOT/.cache/conda-pkgs&quot;
+export CONDA_ENVS_PATH=&quot;$NTE_ROOT/envs&quot;
+export CONDA_REGISTER_ENVS=false
+export XDG_CACHE_HOME=&quot;$NTE_ROOT/.cache&quot;
+export PIP_CACHE_DIR=&quot;$NTE_ROOT/.cache/pip&quot;
+export MPLCONFIGDIR=&quot;$NTE_ROOT/.cache/matplotlib&quot;
+export CUDA_CACHE_PATH=&quot;$NTE_ROOT/.cache/cuda&quot;
+export TORCH_HOME=&quot;$NTE_ROOT/.cache/torch&quot;
+export TMPDIR=&quot;$NTE_ROOT/.tmp&quot;
+export PYTHONNOUSERSITE=1
+export PIP_CONFIG_FILE=/dev/null
+export PIP_USER=0
+export MPLBACKEND=Agg
+unset PYTHONPATH PYTHONHOME PIP_TARGET PIP_PREFIX
+EOF
+
+cat &gt; condarc-local.yml &lt;&lt;&#x27;EOF&#x27;
+channels:
+  - conda-forge
+channel_priority: strict
+auto_activate_base: false
+register_envs: false
+EOF
+
+source ./env-local.sh
+mkdir -p &quot;$CONDA_PKGS_DIRS&quot; &quot;$PIP_CACHE_DIR&quot; \
+  &quot;$MPLCONFIGDIR&quot; &quot;$CUDA_CACHE_PATH&quot; &quot;$TORCH_HOME&quot;</code></pre>
+<p><code>CONDA_REGISTER_ENVS=false</code> 关闭用户级环境登记。<code>PIP_CONFIG_FILE=/dev/null</code> 关闭 pip 配置文件读取，所以安装命令显式指定 pip 索引。Conda channels 和 pip index 是两套独立配置。当前环境在这个 shell 中持续有效，执行 <code>exit</code> 可退出子 shell。</p>
+
+</section><section aria-labelledby="miniforge">
+<h2 id="miniforge">安装 Miniforge 与 Python 3.10</h2>
+
+<p>首次安装下载 Linux x86_64 安装包和校验文件。使用 <code>-b</code> 批量安装，再加载项目内的 <code>conda.sh</code>。已有 <code>miniforge3/</code> 时从 <code>source</code> 开始。</p>
+<pre><code class="language-bash">cd &quot;$NTE_ROOT/downloads&quot;
+curl -fL --retry 3 -O \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+curl -fL --retry 3 -O \
+  https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh.sha256
+
+sha256sum -c Miniforge3-Linux-x86_64.sh.sha256</code></pre><p>校验显示 <code>OK</code> 后，安装管理器和项目环境。保存安装包及校验文件可记录实际安装版本。</p><pre><code class="language-bash">bash Miniforge3-Linux-x86_64.sh -b -p &quot;$NTE_ROOT/miniforge3&quot;
+source &quot;$NTE_ROOT/miniforge3/etc/profile.d/conda.sh&quot;
+
+conda create -y \
+  --prefix &quot;$NTE_ROOT/envs/deepsdf&quot; \
+  --override-channels -c conda-forge \
+  python=3.10 pip
+
+conda activate &quot;$NTE_ROOT/envs/deepsdf&quot;
+which python</code></pre>
+<p>Python 应位于 <code>/home/ps/jishaobin/research-field-NTE/envs/deepsdf/bin/python</code>。Miniforge 的 base Python 与项目环境 Python 可以是不同版本。<a href="https://github.com/conda-forge/miniforge">Miniforge 安装说明</a></p>
+
+</section><section aria-labelledby="pytorch">
+<h2 id="pytorch">安装 GPU 版 PyTorch</h2>
+
+<p>验证过的版本为 <code>torch==2.5.1+cu124</code>，运行库为 CUDA 12.4，服务器驱动 560.35.05 可以支持。<code>nvidia-smi</code> 中的 CUDA 版本反映驱动支持能力。本教程使用 wheel 提供的运行依赖，训练阶段可以直接调用 GPU。</p>
+<p>通过 PyTorch 官方 cu124 索引安装时使用以下命令。这个索引列出的部分 NVIDIA 依赖曾在 amd128 连接超时。<a href="https://pytorch.org/get-started/previous-versions/">PyTorch 官方版本命令</a></p>
+<pre><code class="language-bash">python -m pip install torch==2.5.1 \
+  --index-url https://download.pytorch.org/whl/cu124</code></pre>
+<h3>使用本地 wheel 和镜像补齐依赖</h3>
+<p>本次部署手动上传了 PyTorch 和 NVRTC wheel。下面命令直接读取这两个文件，再从清华镜像安装其余依赖。<code>cp310</code> 对应 Python 3.10，<code>+cu124</code> 对应 CUDA 12.4 构建。</p>
+<pre><code class="language-bash">wheel_dir=&quot;$NTE_ROOT/downloads&quot;
+python -m pip install \
+  &quot;$wheel_dir/torch-2.5.1+cu124-cp310-cp310-linux_x86_64.whl&quot; \
+  &quot;$wheel_dir/nvidia_cuda_nvrtc_cu12-12.4.127-py3-none-manylinux2014_x86_64.whl&quot; \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+  --timeout 60</code></pre>
+<p>可把索引改成 <code>https://pypi.org/simple</code>。指定的本地 wheel 决定 PyTorch 版本，索引用于补齐依赖。CUDA Runtime、cuDNN、cuBLAS 等仍可能下载超过 2 GB。下载缓慢时参见<a href="../troubleshooting/index.html#network">索引和 tmux 记录</a>。</p>
+
+</section><section aria-labelledby="repositories">
+<h2 id="repositories">获取仓库并安装 Python 依赖</h2>
+
+<p>amd128 已有两个仓库。新目录可执行克隆命令；已有目录可直接安装依赖。本指南的兼容补丁基于 DeepSDF 上游提交 <code>48c19b8</code>。</p>
+<pre><code class="language-bash">cd &quot;$NTE_ROOT&quot;
+git clone --recursive https://github.com/facebookresearch/DeepSDF.git
+git clone https://github.com/mkofler96/SdfSampler.git</code></pre><pre><code class="language-bash">cat &gt; &quot;$NTE_ROOT/constraints-deepsdf.txt&quot; &lt;&lt;&#x27;EOF&#x27;
+numpy==1.26.4
+scipy==1.11.4
+scikit-image==0.22.0
+matplotlib==3.8.4
+plyfile==1.0.3
+torch==2.5.1
+EOF
+
+python -m pip install \
+  -c &quot;$NTE_ROOT/constraints-deepsdf.txt&quot; \
+  numpy scipy scikit-image matplotlib plyfile trimesh==5.2.0 \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+python -m pip install \
+  -c &quot;$NTE_ROOT/constraints-deepsdf.txt&quot; \
+  -e &quot;$NTE_ROOT/SdfSampler&quot; \
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+python -m pip check</code></pre>
+<p>DeepSDF 当前仓库通过目录导入运行，进入 <code>DeepSDF/</code> 后执行 Python 脚本。CMake 工程编译的是原版网格采样器 <code>PreprocessMesh</code> 和 <code>SampleVisibleMeshSurface</code>。本流程由 Python SdfSampler 产生样本，训练与 PLY 导出可直接运行。要使用原版网格预处理，再按官方说明准备 CLI11、Pangolin、nanoflann 和 Eigen3，并运行 <code>cmake</code> 构建。<a href="https://github.com/facebookresearch/DeepSDF">DeepSDF 官方仓库</a></p>
+
+</section><section aria-labelledby="compatibility">
+<h2 id="compatibility">应用兼容补丁</h2>
+
+<p>下载<a href="../files/deepsdf-cu124-compatibility.patch" download>兼容补丁</a>并上传到 <code>$NTE_ROOT/downloads/</code>。对干净的上游代码先检查再应用。当前服务器已经有这些修复，可通过 <code>git diff</code> 查看。</p>
+<pre><code class="language-bash">cd &quot;$NTE_ROOT/DeepSDF&quot;
+git apply --check &quot;$NTE_ROOT/downloads/deepsdf-cu124-compatibility.patch&quot;
+git apply &quot;$NTE_ROOT/downloads/deepsdf-cu124-compatibility.patch&quot;
+git diff --check</code></pre>
+<ul>
+<li><code>deep_sdf/data.py</code> 把正负样本转为 float32，与网络参数类型一致。</li>
+<li><code>deep_sdf/mesh.py</code> 使用整数网格索引和 <code>marching_cubes</code> API。</li>
+<li><code>generate_training_meshes.py</code> 将潜向量移动到解码器所在设备。</li>
+<li>训练恢复与网格导出涉及的 <code>torch.load</code> 显式使用 <code>weights_only=True</code>。</li>
+</ul>
+<p>这份补丁对应五个文件。已有部分修复的代码和其他分支，应阅读补丁后逐项合并。</p>
+
+</section><section aria-labelledby="activate">
+<h2 id="activate">保存激活入口并验证 GPU</h2>
+<pre><code class="language-bash">cat &gt; &quot;$NTE_ROOT/activate-deepsdf.sh&quot; &lt;&lt;&#x27;EOF&#x27;
+source /home/ps/jishaobin/research-field-NTE/env-local.sh
+source &quot;$NTE_ROOT/miniforge3/etc/profile.d/conda.sh&quot;
+conda activate &quot;$NTE_ROOT/envs/deepsdf&quot;
+cd &quot;$NTE_ROOT/DeepSDF&quot;
+EOF
+
+source &quot;$NTE_ROOT/activate-deepsdf.sh&quot;
+
+python - &lt;&lt;&#x27;PY&#x27;
+import torch
+import deep_sdf
+from SdfSampler.sdf_sampler import SDFSampler
+
+print(&quot;PyTorch:&quot;, torch.__version__)
+print(&quot;CUDA runtime:&quot;, torch.version.cuda)
+assert torch.cuda.is_available()
+print(&quot;GPU:&quot;, torch.cuda.get_device_name(0))
+
+x = torch.randn(128, 128, device=&quot;cuda&quot;, requires_grad=True)
+(x @ x).square().mean().backward()
+torch.cuda.synchronize()
+print(&quot;GPU forward/backward OK&quot;)
+PY</code></pre>
+<p>预期输出包含 <code>2.5.1+cu124</code>、<code>12.4</code> 和 RTX 3090。若导入时出现 nvJitLink 符号错误，见<a href="../troubleshooting/index.html#nvjitlink">运行库路径排查</a>。后续 SSH 登录后执行激活脚本即可，也可保存依赖记录。</p>
+<pre><code class="language-bash">source /home/ps/jishaobin/research-field-NTE/activate-deepsdf.sh
+
+mkdir -p &quot;$NTE_ROOT/environment-records&quot;
+python -m pip freeze &gt; &quot;$NTE_ROOT/environment-records/deepsdf-pip.txt&quot;
+conda list --explicit &gt; &quot;$NTE_ROOT/environment-records/deepsdf-conda-explicit.txt&quot;</code></pre>
+</section>
+      <footer>
+        <nav class="page-turn" aria-label="前后章节"><a href="../index.html">上一篇 · DeepSDF</a> <a href="../training/index.html">下一篇 · 球体训练</a></nav>
+        <p><a href="../index.html#resources">脚本与资料</a> · <a href="../../projects.html">返回 Projects</a></p>
+      </footer>
+    </main>
+  </body>
+</html>
